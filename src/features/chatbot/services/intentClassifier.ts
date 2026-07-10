@@ -1,4 +1,5 @@
 import type { Intent, IntentClassification, MarketplaceEntities } from '../types'
+import { matchCategory } from './canonicalCategories'
 
 interface IntentPattern {
   intent: Intent
@@ -28,8 +29,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /search\s+(for\s+)?/i,
       /looking\s+for\s+/i,
       /show\s+me\s+\w+/i,
-      /need\s+a?\s*/i,
-      /where\s+(can\s+)?i\s+(find|buy|get)/i,
       /any\s+\w+\s+(available|selling|for\s+sale)/i,
       /do\s+you\s+have\s+\w+/i,
       /buy\s+(a|an|some|the)\s+\w+/i,
@@ -251,60 +250,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
   },
 ]
 
-const CATEGORY_MAP: Record<string, string> = {
-  phone: 'Mobiles & Tablets', phones: 'Mobiles & Tablets', mobile: 'Mobiles & Tablets',
-  mobiles: 'Mobiles & Tablets', smartphone: 'Mobiles & Tablets', iphone: 'Mobiles & Tablets',
-  samsung: 'Mobiles & Tablets', android: 'Mobiles & Tablets', tablet: 'Mobiles & Tablets',
-  ipad: 'Mobiles & Tablets',
-  laptop: 'Computers & Laptops', laptops: 'Computers & Laptops', computer: 'Computers & Laptops',
-  macbook: 'Computers & Laptops', notebook: 'Computers & Laptops',
-  bike: 'Bikes & Scooters', bikes: 'Bikes & Scooters', motorcycle: 'Bikes & Scooters',
-  motorbike: 'Bikes & Scooters', scooter: 'Bikes & Scooters', bicycle: 'Bikes & Scooters',
-  cycle: 'Bikes & Scooters',
-  car: 'Cars & Vehicles', cars: 'Cars & Vehicles', vehicle: 'Cars & Vehicles',
-  automobile: 'Cars & Vehicles', sedan: 'Cars & Vehicles', suv: 'Cars & Vehicles',
-  house: 'Real Estate', apartment: 'Real Estate', flat: 'Real Estate',
-  rent: 'Real Estate', rental: 'Real Estate', property: 'Real Estate',
-  furniture: 'Home & Furniture', sofa: 'Home & Furniture', table: 'Home & Furniture',
-  chair: 'Home & Furniture', bed: 'Home & Furniture', wardrobe: 'Home & Furniture',
-  tv: 'Electronics & Appliances', television: 'Electronics & Appliances',
-  monitor: 'Electronics & Appliances', display: 'Electronics & Appliances',
-  camera: 'Electronics & Appliances', cameras: 'Electronics & Appliances',
-  dslr: 'Electronics & Appliances', gopro: 'Electronics & Appliances',
-  shoes: 'Fashion & Accessories', sneakers: 'Fashion & Accessories',
-  boots: 'Fashion & Accessories', sandals: 'Fashion & Accessories',
-  shirt: 'Fashion & Accessories', tshirt: 'Fashion & Accessories',
-  't-shirt': 'Fashion & Accessories', jeans: 'Fashion & Accessories',
-  pants: 'Fashion & Accessories', dress: 'Fashion & Accessories',
-  clothes: 'Fashion & Accessories', clothing: 'Fashion & Accessories',
-  jacket: 'Fashion & Accessories', coat: 'Fashion & Accessories',
-  bag: 'Fashion & Accessories', bags: 'Fashion & Accessories',
-  backpack: 'Fashion & Accessories', handbag: 'Fashion & Accessories',
-  luggage: 'Fashion & Accessories', watch: 'Fashion & Accessories',
-  watches: 'Fashion & Accessories', smartwatch: 'Fashion & Accessories',
-  book: 'Books, Music & Gaming', books: 'Books, Music & Gaming',
-  textbook: 'Books, Music & Gaming', novel: 'Books, Music & Gaming',
-  guitar: 'Books, Music & Gaming', piano: 'Books, Music & Gaming',
-  keyboard: 'Books, Music & Gaming', instrument: 'Books, Music & Gaming',
-  gaming: 'Books, Music & Gaming', playstation: 'Books, Music & Gaming',
-  xbox: 'Books, Music & Gaming', nintendo: 'Books, Music & Gaming',
-  ps5: 'Books, Music & Gaming', ps4: 'Books, Music & Gaming',
-  headphones: 'Electronics & Appliances', earbuds: 'Electronics & Appliances',
-  earphones: 'Electronics & Appliances', speaker: 'Electronics & Appliances',
-  speakers: 'Electronics & Appliances',
-  pet: 'Pets & Pet Care', dog: 'Pets & Pet Care', cat: 'Pets & Pet Care',
-  puppy: 'Pets & Pet Care', kitten: 'Pets & Pet Care',
-  sports: 'Sports & Leisure', cricket: 'Sports & Leisure', football: 'Sports & Leisure',
-  bat: 'Sports & Leisure', racket: 'Sports & Leisure',
-  baby: 'Baby & Kids', stroller: 'Baby & Kids', crib: 'Baby & Kids',
-  toys: 'Baby & Kids', toy: 'Baby & Kids',
-  kitchen: 'Home & Furniture', appliance: 'Electronics & Appliances',
-  mixer: 'Electronics & Appliances', oven: 'Electronics & Appliances',
-  microwave: 'Electronics & Appliances', fridge: 'Electronics & Appliances',
-  refrigerator: 'Electronics & Appliances',
-  tool: 'Other', tools: 'Other', drill: 'Other', saw: 'Other',
-}
-
 function extractBudget(text: string): { min?: number; max?: number } | undefined {
   const underMatch = text.match(/(?:under|below|less\s+than|within|upto|up\s+to)\s*(?:rs\.?|inr|₹)?\s*(\d[\d,]*)/i)
   if (underMatch) {
@@ -335,12 +280,11 @@ function extractBudget(text: string): { min?: number; max?: number } | undefined
 }
 
 function extractCategory(text: string): string | undefined {
-  const normalized = text.toLowerCase()
-  for (const [keyword, category] of Object.entries(CATEGORY_MAP)) {
-    const regex = new RegExp(`\\b${keyword}\\b`, 'i')
-    if (regex.test(normalized)) return category
-  }
-  return undefined
+  // Delegate to canonicalCategories.ts (SINGLE SOURCE OF TRUTH) so we never
+  // maintain a duplicate category mapping inside the intent classifier.
+  // matchCategory returns the canonical category slug (e.g. "vehicles"),
+  // which is exactly what marketplaceSearch.searchListings filters by.
+  return matchCategory(text)
 }
 
 function extractLocation(text: string): string | undefined {
@@ -501,6 +445,40 @@ export function classifyIntent(message: string): IntentClassification {
     }
   }
 
+  let entities = extractEntities(trimmed)
+  const category = entities.category
+
+  // Product category slugs that should trigger direct SEARCH_LISTINGS for
+  // short queries. Excludes action/service categories like "events", "services",
+  // "jobs" that would false-positive on verbs like "show", "find", "work".
+  const PRODUCT_CATEGORY_SLUGS = new Set([
+    'vehicles',
+    'mobiles-tablets',
+    'electronics',
+    'property',
+    'furniture-home',
+    'fashion-lifestyle',
+    'kids',
+    'sports-hobbies',
+    'pets',
+    'education',
+  ])
+  
+  // entities.category is populated via canonicalCategories.matchCategory (the
+  // SINGLE SOURCE OF TRUTH). If a valid marketplace PRODUCT category was
+  // detected AND the query is a short, direct category search (≤3 words),
+  // route straight to SEARCH_LISTINGS so terms like "car", "bike", "iphone",
+  // "laptop" and "house" surface listings instead of a generic help response.
+  if (category && PRODUCT_CATEGORY_SLUGS.has(category) && trimmed.split(/\s+/).length <= 3) {
+    return {
+      intent: 'SEARCH_LISTINGS',
+      confidence: 0.9,
+      entities,
+      missingInformation: getMissingInformation('SEARCH_LISTINGS', entities),
+      requiresClarification: getMissingInformation('SEARCH_LISTINGS', entities).length > 0,
+    }
+  }
+
   let bestPhraseMatch: IntentPattern | null = null
   let bestPhraseScore = 0
 
@@ -519,13 +497,12 @@ export function classifyIntent(message: string): IntentClassification {
       }
     }
   }
-
+  
   if (bestPhraseMatch && bestPhraseScore > 0.5) {
-    const entities = extractEntities(trimmed)
     const missing = getMissingInformation(bestPhraseMatch.intent, entities)
     return {
       intent: bestPhraseMatch.intent,
-      confidence: Math.min(bestPhraseMatch.confidence, 1),
+      confidence: bestPhraseScore,
       entities,
       missingInformation: missing,
       requiresClarification: missing.length > 0 && bestPhraseMatch.intent === 'SEARCH_LISTINGS',
@@ -552,7 +529,7 @@ export function classifyIntent(message: string): IntentClassification {
   }
 
   if (bestKeywordMatch && bestKeywordScore > 0.5) {
-    const entities = extractEntities(trimmed)
+    entities = extractEntities(trimmed)
     const missing = getMissingInformation(bestKeywordMatch.intent, entities)
     return {
       intent: bestKeywordMatch.intent,
@@ -563,7 +540,7 @@ export function classifyIntent(message: string): IntentClassification {
     }
   }
 
-  const entities = extractEntities(trimmed)
+  entities = extractEntities(trimmed)
 
   return {
     intent: 'UNKNOWN',

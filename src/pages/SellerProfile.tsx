@@ -4,6 +4,7 @@ import { User, MapPin, Calendar, Package, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { SEO } from '../components/SEO'
 import { OptimizedImage } from '../components/OptimizedImage'
+import { ProtectedChat } from '../components/ProtectedChat'
 import type { Listing, Profile } from '../types'
 import { format } from 'date-fns'
 
@@ -155,15 +156,17 @@ export function SellerProfile() {
             </div>
           )}
 
-          <div className="mt-6">
-            <button
-              disabled
-              className="cursor-not-allowed rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-medium text-white opacity-70"
-              title="Contact feature coming soon"
-            >
-              Contact Seller
-            </button>
-          </div>
+      <div className="mt-6">
+        <ProtectedChat fallbackMessage="Please log in or create an account to chat with this seller.">
+          <button
+            disabled
+            className="cursor-not-allowed rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-medium text-white opacity-70"
+            title="Contact feature coming soon"
+          >
+            Contact Seller
+          </button>
+        </ProtectedChat>
+      </div>
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import { ImageGallery } from '../components/ImageGallery'
 import { ListingMap } from '../components/ListingMap'
 import { SEO, BreadcrumbListJsonLd, SITE_URL } from '../components/SEO'
 import { OptimizedImage } from '../components/OptimizedImage'
+import { ProtectedChat } from '../components/ProtectedChat'
 import type { Listing } from '../types'
 import { format } from 'date-fns'
 
@@ -196,12 +197,13 @@ export function ListingDetail() {
               <p className="whitespace-pre-wrap text-gray-700" data-testid="listing-detail-description">
                 {listing.description}
               </p>
-          </div>
+            </div>
 
           {listing.profile && (
-            <Link
-              to={`/seller/${listing.profile.id}`}
-              className="mt-6 flex items-center gap-3 rounded-lg bg-gray-50 p-4 transition hover:bg-gray-100"
+            <ProtectedChat fallbackMessage="Please log in or create an account to view this seller's profile and chat with them.">
+              <Link
+                to={`/seller/${listing.profile.id}`}
+                className="mt-6 flex items-center gap-3 rounded-lg bg-gray-50 p-4 transition hover:bg-gray-100"
             >
               {listing.profile.avatar_url ? (
                 <OptimizedImage src={listing.profile.avatar_url} alt={listing.profile.full_name || 'Seller'} className="h-10 w-10 rounded-full object-cover" />
@@ -215,17 +217,20 @@ export function ListingDetail() {
                 <p className="font-medium hover:text-primary-600">{listing.profile.full_name}</p>
               </div>
             </Link>
+          </ProtectedChat>
           )}
 
           {user && listing.profile && user.id !== listing.user_id && (
-            <Link
-              to={`/messages?new=true&listing=${listing.id}&seller=${listing.user_id}`}
-              className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700"
-              data-testid="listing-contact-seller"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Chat with Seller
-            </Link>
+            <ProtectedChat fallbackMessage="Please log in or create an account to chat with this seller.">
+              <Link
+                to={`/messages?new=true&listing=${listing.id}&seller=${listing.user_id}`}
+                className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700"
+                data-testid="listing-contact-seller"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Chat with Seller
+              </Link>
+            </ProtectedChat>
           )}
 
           {user && listing.profile && user.id === listing.user_id && (

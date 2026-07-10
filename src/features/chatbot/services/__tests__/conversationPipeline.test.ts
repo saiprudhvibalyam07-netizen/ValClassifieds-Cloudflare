@@ -39,7 +39,7 @@ describe('conversationPipeline', () => {
 
     it('extracts category', async () => {
       const result = await runConversationPipeline('find laptops', 'visitor')
-      expect(result.classification.entities.category).toBe('Computers & Laptops')
+      expect(result.classification.entities.category).toBe('electronics')
     })
 
     it('extracts budget', async () => {
