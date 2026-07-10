@@ -497,6 +497,18 @@ const ADMIN_DASHBOARD: SupportTopic = {
   ],
 }
 
+const ADMIN_ACCESS_DENIED: SupportTopic = {
+  title: 'Admin Access Required',
+  sections: [
+    { type: 'empty_state', variant: 'no_permissions', title: 'Admin Access Required', description: 'You do not have permission to access administrative features.' },
+  ],
+  suggestedActions: [
+    { label: 'Browse Listings', value: 'search' },
+    { label: 'Search Listings', value: 'search' },
+    { label: 'Contact Support', value: 'contact support' },
+  ],
+}
+
 // ─── Fallback Topics ──────────────────────────────────────────────────────────
 
 const LISTING_DETAILS_FALLBACK: SupportTopic = {
@@ -682,7 +694,7 @@ const TOPICS: Record<string, SupportTopic> = {
   'system status': ADMIN_DASHBOARD,
   'recent activity': ADMIN_DASHBOARD,
   'pending reports': ADMIN_DASHBOARD,
-  'admin access denied': ADMIN_DASHBOARD,
+  'admin access denied': ADMIN_ACCESS_DENIED,
   'admin dashboard': ADMIN_DASHBOARD,
 
   // Greeting roles
