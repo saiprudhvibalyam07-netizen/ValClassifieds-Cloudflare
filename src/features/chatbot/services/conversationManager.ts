@@ -16,47 +16,6 @@ async function setSessionContext(sessionId: string): Promise<void> {
   await supabase.rpc('set_chatbot_session', { session_id: sessionId }).maybeSingle()
 }
 
-// Emergency-only fallback. Conversations are PERSISTENT by default; an in-memory
-// (ephemeral) conversation is used solely when the database is unreachable
-// (network failure / Supabase outage). Policy/constraint errors (e.g. RLS 42501)
-// are NOT outages and must surface as real errors, never be hidden.
-const localConversationIds = new Set<string>()
-
-function isOutage(error: unknown): boolean {
-  if (!error) return false
-  const status = (error as { status?: number | null })?.status
-  if (status === undefined || status === null || status === 0) return true // network / unknown
-  if (typeof status === 'number' && status >= 500) return true // server error
-  return false
-}
-
-function createLocalConversation(
-  userId: string | null,
-  role: ChatbotRole,
-  sessionId: string | null
-): ChatbotConversation {
-  const id = crypto.randomUUID()
-  localConversationIds.add(id)
-  const now = new Date().toISOString()
-  return {
-    id,
-    userId,
-    sessionId,
-    role,
-    title: null,
-    status: 'active',
-    messageCount: 0,
-    lastActivity: now,
-    metadata: { ephemeral: true },
-    createdAt: now,
-    updatedAt: now,
-  }
-}
-
-function isLocalConversation(conversationId: string): boolean {
-  return localConversationIds.has(conversationId)
-}
-
 // Wipe all client-side chatbot state associated with the current user/session.
 // Called on auth change (logout/login/switch) so no conversation, message,
 // memory, or ephemeral id can leak to the next account.
@@ -67,7 +26,6 @@ function isLocalConversation(conversationId: string): boolean {
 //  - an authenticated user's teardown (logout / switch) clears the legacy
 //    guest session id so the next account starts clean.
 async function resetSession(endingUserId: string | null): Promise<void> {
-  localConversationIds.clear()
   if (endingUserId !== null) {
     try {
       localStorage.removeItem(SESSION_STORAGE_KEY)
@@ -107,21 +65,14 @@ export const conversationManager = {
         .single()
 
       if (error) {
-        // Database responded with an error. Only treat server/network failures
-        // as an outage; configuration errors (RLS, constraints) are surfaced.
-        if (isOutage(error)) {
-          console.warn('Chatbot DB unavailable — entering temporary offline mode:', error.message)
-          return createLocalConversation(userId, role, sessionId)
-        }
         console.error('Failed to create conversation:', error.message)
         return null
       }
 
       return mapConversation(data)
     } catch (err) {
-      // Network failure / Supabase unreachable → emergency offline mode.
-      console.warn('Chatbot network failure — entering temporary offline mode:', err)
-      return createLocalConversation(userId, role, sessionId)
+      console.error('Chatbot network failure creating conversation:', err)
+      return null
     }
   },
 
@@ -154,8 +105,6 @@ export const conversationManager = {
   },
 
   async getMessages(conversationId: string): Promise<ChatbotMessage[]> {
-    if (isLocalConversation(conversationId)) return []
-
     try {
       const { data, error } = await supabase
         .from('chatbot_messages')
@@ -180,17 +129,6 @@ export const conversationManager = {
     role: 'user' | 'assistant',
     content: string
   ): Promise<ChatbotMessage | null> {
-    if (isLocalConversation(conversationId)) {
-      return {
-        id: crypto.randomUUID(),
-        conversationId,
-        role,
-        content,
-        createdAt: new Date().toISOString(),
-        status: 'sent',
-      }
-    }
-
     try {
       const { data, error } = await supabase
         .from('chatbot_messages')
@@ -207,6 +145,7 @@ export const conversationManager = {
         return null
       }
 
+      // Update conversation's last_activity and updated_at
       await supabase
         .from('chatbot_conversations')
         .update({
