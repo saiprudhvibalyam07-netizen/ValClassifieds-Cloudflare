@@ -16,8 +16,7 @@ describe('getConversationProvider routing (mockMode: true)', () => {
 
     const response = await provider.sendMessage('hi', 'visitor')
 
-    // Mock provider returns greeting, NOT the OpenAI fallback
-    expect(response.content).toContain('Welcome')
+    expect(response.content).toContain('ValBot')
     expect(response.content).not.toContain('apologize')
     expect(response.content).not.toContain('unable to process')
   })
@@ -27,10 +26,10 @@ describe('getConversationProvider routing (mockMode: true)', () => {
     const provider = getConversationProvider()
 
     const tests = [
-      { input: 'hello', expected: 'Welcome' },
-      { input: 'how to buy', expected: 'Buying' },
-      { input: 'is it safe', expected: 'Safety' },
-      { input: 'show me categories', expected: 'Mobiles' },
+      { input: 'hello', expected: 'ValBot' },
+      { input: 'how to buy on this platform', expected: 'Buying' },
+      { input: 'is it safe to buy here', expected: 'safe' },
+      { input: 'show categories', expected: 'Categories' },
     ]
 
     for (const { input, expected } of tests) {

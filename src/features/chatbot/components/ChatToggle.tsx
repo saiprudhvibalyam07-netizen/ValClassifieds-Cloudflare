@@ -1,14 +1,11 @@
-import { MessageCircle, X, Minimize } from 'lucide-react'
+import { MessageCircle, X } from 'lucide-react'
 
 interface ChatToggleProps {
   isOpen: boolean
   onClick: () => void
-  unreadCount?: number
-  isMinimized?: boolean
-  onMinimize?: () => void
 }
 
-export function ChatToggle({ isOpen, onClick, unreadCount, isMinimized, onMinimize }: ChatToggleProps) {
+export function ChatToggle({ isOpen, onClick }: ChatToggleProps) {
   return (
     <button
       onClick={onClick}
@@ -17,21 +14,11 @@ export function ChatToggle({ isOpen, onClick, unreadCount, isMinimized, onMinimi
       aria-expanded={isOpen}
       aria-haspopup="dialog"
     >
-      {isMinimized ? (
-        <Minimize className="h-6 w-6 transition-transform duration-200" onClick={(e) => {
-          e.stopPropagation()
-          onMinimize?.()
-        }} />
-      ) : isOpen ? (
+      {isOpen ? (
         <X className="h-6 w-6 transition-transform duration-200" />
       ) : (
         <MessageCircle className="h-6 w-6 transition-transform duration-200" />
       )}
-      {!isOpen && unreadCount && unreadCount > 0 ? (
-        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-          {unreadCount > 9 ? '9+' : unreadCount}
-        </span>
-      ) : null}
     </button>
   )
 }

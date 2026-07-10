@@ -2,7 +2,6 @@ import type { ChatbotRole, MockResponse } from '../types'
 import type { ChatbotMessage } from '../types'
 import { CHATBOT_CONFIG } from '../config'
 import { mockConversationProvider } from './mockConversationProvider'
-import { openaiConversationProvider } from './openaiConversationProvider'
 
 export interface SendMessageOptions {
   onToken?: (token: string) => void
@@ -26,5 +25,5 @@ export function getConversationProvider(): ConversationProvider {
     return mockConversationProvider
   }
 
-  return openaiConversationProvider
+  return mockConversationProvider
 }

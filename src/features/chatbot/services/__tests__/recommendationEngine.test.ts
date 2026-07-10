@@ -1,33 +1,37 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { recommendListings, recommendCategories, recommendAll } from '../recommendationEngine'
-import * as marketplaceIntelligence from '../marketplaceIntelligence'
-import type { UserPreference, MarketplaceListing, MarketplaceCategory } from '../../types'
+import * as marketplaceSearch from '../marketplaceSearch'
+import type { UserPreference } from '../../types'
 
-vi.mock('../marketplaceIntelligence', () => ({
+vi.mock('../marketplaceSearch', () => ({
   searchListings: vi.fn(),
-  getCategories: vi.fn(),
+  getCategoriesWithCounts: vi.fn(),
+  getSellerInfo: vi.fn(),
+  getFeaturedListings: vi.fn(),
 }))
 
-vi.mock('../retrievalPipeline', () => ({
-  retrieveContext: vi.fn().mockResolvedValue({ chunks: [] }),
-}))
-
-const mockListings: MarketplaceListing[] = [
-  { id: 'l1', title: 'MacBook Pro', price: 120000, category: 'Electronics', location: 'Mumbai', sellerId: 's1', status: 'active', images: ['img1.jpg'], createdAt: '2024-01-01' },
-  { id: 'l2', title: 'iPhone 15', price: 80000, category: 'Electronics', location: 'Delhi', sellerId: 's2', status: 'active', images: ['img2.jpg'], createdAt: '2024-01-02' },
-  { id: 'l3', title: 'Sofa Set', price: 25000, category: 'Furniture', location: 'Mumbai', sellerId: 's3', status: 'active', images: ['img3.jpg'], createdAt: '2024-01-03' },
+const mockListings = [
+  { id: 'l1', title: 'MacBook Pro', price: 120000, city: 'Mumbai', category: { name: 'Electronics' }, condition: 'new', profile: { full_name: 'Seller 1' }, images: [{ url: 'img1.jpg' }], user_id: 's1' },
+  { id: 'l2', title: 'iPhone 15', price: 80000, city: 'Delhi', category: { name: 'Electronics' }, condition: 'new', profile: { full_name: 'Seller 2' }, images: [{ url: 'img2.jpg' }], user_id: 's2' },
+  { id: 'l3', title: 'Sofa Set', price: 25000, city: 'Mumbai', category: { name: 'Furniture' }, condition: 'used', profile: { full_name: 'Seller 3' }, images: [{ url: 'img3.jpg' }], user_id: 's3' },
 ]
 
-const mockCategories: MarketplaceCategory[] = [
-  { id: 'cat1', name: 'Electronics', slug: 'electronics', parentId: null, itemCount: 50 },
-  { id: 'cat2', name: 'Furniture', slug: 'furniture', parentId: null, itemCount: 30 },
+const mockCategoriesWithCounts = [
+  { id: 'cat1', name: 'Electronics', slug: 'electronics', activeCount: 50 },
+  { id: 'cat2', name: 'Furniture', slug: 'furniture', activeCount: 30 },
 ]
 
 describe('RecommendationEngine', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(marketplaceIntelligence.searchListings).mockResolvedValue(mockListings)
-    vi.mocked(marketplaceIntelligence.getCategories).mockResolvedValue(mockCategories)
+    vi.mocked(marketplaceSearch.searchListings).mockResolvedValue({
+      listings: mockListings,
+      total: 3,
+      page: 1,
+      limit: 12,
+      hasMore: false,
+    })
+    vi.mocked(marketplaceSearch.getCategoriesWithCounts).mockResolvedValue(mockCategoriesWithCounts)
   })
 
   describe('recommendListings', () => {
@@ -59,7 +63,13 @@ describe('RecommendationEngine', () => {
         { key: 'preferred_category', value: 'Electronics', confidence: 0.9, source: 'inferred', updatedAt: new Date().toISOString() },
         { key: 'budget_under', value: '90000', confidence: 0.8, source: 'inferred', updatedAt: new Date().toISOString() },
       ]
-      vi.mocked(marketplaceIntelligence.searchListings).mockResolvedValue([mockListings[0], mockListings[1]])
+      vi.mocked(marketplaceSearch.searchListings).mockResolvedValue({
+        listings: [mockListings[0], mockListings[1]],
+        total: 2,
+        page: 1,
+        limit: 12,
+        hasMore: false,
+      })
       const recs = await recommendListings(prefs)
       expect(recs.length).toBeGreaterThan(0)
     })

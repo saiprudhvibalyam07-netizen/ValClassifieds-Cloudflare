@@ -1,7 +1,5 @@
 import { registerTool, executeToolCall } from './toolRouter'
-import { searchListings, getListingDetails, getCategories, getSellerInfo } from './marketplaceIntelligence'
-import { retrieveContext } from './retrievalPipeline'
-import { generateCitations, formatInlineCitation } from './citationEngine'
+import { searchListings, getListingById, getCategoriesWithCounts, getSellerInfo } from './marketplaceSearch'
 import { logger } from './logger'
 
 export function registerPhase2Tools(): void {
@@ -10,18 +8,27 @@ export function registerPhase2Tools(): void {
     description: 'Search marketplace listings with filters for category, price range, location, and keywords',
     execute: async (params, _role) => {
       try {
-        const filters = {
-          categories: params.categories as string[] | undefined,
-          minPrice: params.minPrice as number | undefined,
-          maxPrice: params.maxPrice as number | undefined,
-          location: params.location as string | undefined,
-          query: params.query as string | undefined,
-        }
-        const results = await searchListings(filters)
+        const categories = params.categories as string[] | undefined
+        const minPrice = params.minPrice as number | undefined
+        const maxPrice = params.maxPrice as number | undefined
+        const location = params.location as string | undefined
+        const query = params.query as string | undefined
+
+        const results = await searchListings({
+          categories,
+          minPrice,
+          maxPrice,
+          location,
+          query,
+          status: 'active',
+          sort: 'newest',
+          limit: 12,
+          page: 1,
+        })
         return {
           toolName: 'searchListings',
           success: true,
-          data: { listings: results, count: results.length },
+          data: { listings: results.listings, count: results.total },
         }
       } catch (err) {
         return {
@@ -39,7 +46,7 @@ export function registerPhase2Tools(): void {
     execute: async (params, _role) => {
       try {
         const id = params.listingId as string
-        const listing = await getListingDetails(id)
+        const listing = await getListingById(id)
         if (!listing) {
           return { toolName: 'getListingDetails', success: false, error: 'Listing not found' }
         }
@@ -56,10 +63,10 @@ export function registerPhase2Tools(): void {
 
   registerTool({
     name: 'getCategories',
-    description: 'Get all available marketplace categories',
+    description: 'Get all available marketplace categories with active listing counts',
     execute: async (_params, _role) => {
       try {
-        const cats = await getCategories()
+        const cats = await getCategoriesWithCounts()
         return { toolName: 'getCategories', success: true, data: { categories: cats } }
       } catch (err) {
         return {
@@ -92,59 +99,7 @@ export function registerPhase2Tools(): void {
     },
   })
 
-  registerTool({
-    name: 'getPolicies',
-    description: 'Get ValClassifieds platform policies including prohibited items, user conduct, and terms',
-    execute: async (_params, _role) => {
-      try {
-        const result = await retrieveContext({ query: 'policies prohibited items conduct', topK: 5, useHybridSearch: false })
-        const { chunks } = result
-        const citations = await generateCitations({ chunks, totalTime: 0 })
-        const policies = chunks.map((sc) => ({
-          title: sc.chunk.metadata.sourceTitle as string ?? 'Policy',
-          content: sc.chunk.content,
-          source: formatInlineCitation(citations[0] ?? { id: '', sourceType: 'policy' as const, sourceTitle: sc.chunk.metadata.sourceTitle as string ?? 'Policy', relevance: 0, excerpt: sc.chunk.content.slice(0, 100) }),
-        }))
-        return { toolName: 'getPolicies', success: true, data: { policies, count: policies.length } }
-      } catch (err) {
-        return {
-          toolName: 'getPolicies',
-          success: false,
-          error: err instanceof Error ? err.message : 'Failed to get policies',
-        }
-      }
-    },
-  })
-
-  registerTool({
-    name: 'searchKnowledge',
-    description: 'Search the knowledge base for FAQs, help center articles, policy documents, and documentation',
-    execute: async (params, _role) => {
-      try {
-        const query = params.query as string
-        const topK = (params.topK as number) ?? 5
-        const result = await retrieveContext({
-          query,
-          topK,
-          useHybridSearch: true,
-          includeCitations: true,
-        })
-        return {
-          toolName: 'searchKnowledge',
-          success: true,
-          data: { chunks: result.chunks, citations: result.citations, count: result.chunks.length },
-        }
-      } catch (err) {
-        return {
-          toolName: 'searchKnowledge',
-          success: false,
-          error: err instanceof Error ? err.message : 'Knowledge search failed',
-        }
-      }
-    },
-  })
-
-  logger.info('phase2_tools_registered', { details: { count: 6 } })
+  logger.info('phase2_tools_registered', { details: { count: 4 } })
 }
 
 export { executeToolCall }

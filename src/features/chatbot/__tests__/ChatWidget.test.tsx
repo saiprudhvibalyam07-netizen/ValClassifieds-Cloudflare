@@ -30,7 +30,7 @@ describe('ChatWidget', () => {
   it('shows the chat header when opened', () => {
     render(<ChatWidget />)
     fireEvent.click(screen.getByRole('button', { name: /open chat/i }))
-    expect(screen.getByText('ValBot Assistant')).toBeInTheDocument()
+    expect(screen.getByText('ValBot')).toBeInTheDocument()
   })
 
   it('shows chat input when opened', () => {

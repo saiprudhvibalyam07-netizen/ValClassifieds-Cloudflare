@@ -3,6 +3,7 @@ import { useChat } from '../hooks/useChat'
 import { ChatHeader } from './ChatHeader'
 import { ChatMessages } from './ChatMessages'
 import { ChatInput } from './ChatInput'
+import { LoadingState } from './LoadingState'
 import { ErrorState } from './ErrorState'
 import { AboutValBot } from './AboutValBot'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -25,7 +26,7 @@ export function ChatPanel() {
   const [showAbout, setShowAbout] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
 
-  const showWelcome = true
+  const showWelcome = messages.length === 0
 
   const handlePromptClick = (prompt: string) => {
     sendMessage(prompt)
@@ -40,6 +41,10 @@ export function ChatPanel() {
     setShowClearConfirm(false)
     resetChat()
     await startNewConversation(role)
+  }
+
+  const handleDismissError = () => {
+    resetChat()
   }
 
   return (
@@ -62,7 +67,7 @@ export function ChatPanel() {
         {error && (
           <ErrorState
             message={error}
-            onDismiss={() => {}}
+            onDismiss={handleDismissError}
           />
         )}
 
@@ -74,7 +79,7 @@ export function ChatPanel() {
 
         {!conversation ? (
           error ? (
-            <ErrorState message={error} onDismiss={() => {}} />
+            <ErrorState message={error} onDismiss={handleDismissError} />
           ) : (
             <LoadingState message="Starting conversation..." />
           )
@@ -107,17 +112,6 @@ export function ChatPanel() {
           onCancel={() => setShowClearConfirm(false)}
         />
       )}
-    </div>
-  )
-}
-
-function LoadingState({ message }: { message: string }) {
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="flex flex-col items-center gap-2">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-        <p className="text-xs text-gray-500">{message}</p>
-      </div>
     </div>
   )
 }

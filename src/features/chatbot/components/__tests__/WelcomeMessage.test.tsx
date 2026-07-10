@@ -6,7 +6,7 @@ describe('WelcomeMessage', () => {
   it('renders welcome text for visitor role', () => {
     render(<WelcomeMessage role="visitor" onPromptClick={() => {}} />)
     expect(screen.getByText('ValBot')).toBeInTheDocument()
-    expect(screen.getByText('AI Assistant')).toBeInTheDocument()
+    expect(screen.getByText('Marketplace Assistant')).toBeInTheDocument()
   })
 
   it('renders starter prompts', () => {

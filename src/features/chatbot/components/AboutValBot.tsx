@@ -29,17 +29,18 @@ export function AboutValBot({ onClose }: AboutValBotProps) {
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900">
             <Bot className="h-7 w-7 text-primary-600" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">ValBot Assistant</h3>
-          <p className="mt-1 text-xs text-gray-500">AI-Powered Marketplace Helper</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">ValBot</h3>
+          <p className="mt-1 text-xs text-gray-500">Marketplace Assistant</p>
         </div>
 
         <p className="mt-4 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-          ValBot is your intelligent assistant for ValClassifieds. It helps you navigate
-          the marketplace, find listings, and get answers to your questions.
+          ValBot is the official Marketplace Assistant for ValClassifieds. It can help you
+          search listings, discover products, buy safely, sell successfully, and navigate
+          the platform.
         </p>
 
         <div className="mt-4 rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Supported Features</p>
+          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">ValBot can help with</p>
           <ul className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
             <li className="flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-primary-500" />
@@ -47,18 +48,22 @@ export function AboutValBot({ onClose }: AboutValBotProps) {
             </li>
             <li className="flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-primary-500" />
-              Marketplace guidance and safety tips
+              Buying guidance and safety tips
             </li>
             <li className="flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-primary-500" />
-              Category and listing recommendations
+              Selling advice and listing help
             </li>
             <li className="flex items-center gap-2">
               <span className="h-1 w-1 shrink-0 rounded-full bg-primary-500" />
-              Buying and selling help
+              Platform features and navigation
             </li>
           </ul>
         </div>
+
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          ValBot provides guidance. It does not make decisions, negotiate, or invent marketplace information.
+        </p>
 
         <button
           onClick={onClose}

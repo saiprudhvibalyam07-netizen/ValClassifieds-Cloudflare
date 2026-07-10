@@ -15,7 +15,7 @@ function renderWithProvider() {
 describe('ChatPanel', () => {
   it('renders chat header with role title', () => {
     renderWithProvider()
-    expect(screen.getByText('ValBot Assistant')).toBeInTheDocument()
+    expect(screen.getByText('ValBot')).toBeInTheDocument()
   })
 
   it('renders chat input', () => {

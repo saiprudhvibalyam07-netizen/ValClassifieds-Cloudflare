@@ -86,7 +86,11 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         messages: state.messages.map((m) =>
           m.id === action.payload.messageId
-            ? { ...m, status: 'sent' }
+            ? {
+                ...m,
+                status: 'sent',
+                ...(action.payload.metadata ? { metadata: action.payload.metadata } : {}),
+              }
             : m
         ),
         streamingMessageId: null,
@@ -227,7 +231,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'STREAM_TOKEN', payload: { messageId: assistantTempId, token: response.content } })
       }
 
-      dispatch({ type: 'END_STREAM', payload: { messageId: assistantTempId } })
+      dispatch({
+        type: 'END_STREAM',
+        payload: {
+          messageId: assistantTempId,
+          ...(response.structuredResponse ? { metadata: { structuredResponse: response.structuredResponse } } : {}),
+        },
+      })
 
       const savedAssistant = await conversationManager.saveMessage(
         state.conversation.id,

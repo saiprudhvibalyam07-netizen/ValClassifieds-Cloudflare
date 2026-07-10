@@ -22,21 +22,6 @@ describe('ChatToggle', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it('shows unread badge when unreadCount > 0', () => {
-    render(<ChatToggle isOpen={false} onClick={() => {}} unreadCount={3} />)
-    expect(screen.getByText('3')).toBeInTheDocument()
-  })
-
-  it('shows 9+ for large unread counts', () => {
-    render(<ChatToggle isOpen={false} onClick={() => {}} unreadCount={15} />)
-    expect(screen.getByText('9+')).toBeInTheDocument()
-  })
-
-  it('hides unread badge when chat is open', () => {
-    render(<ChatToggle isOpen={true} onClick={() => {}} unreadCount={3} />)
-    expect(screen.queryByText('3')).not.toBeInTheDocument()
-  })
-
   it('has correct aria attributes', () => {
     render(<ChatToggle isOpen={false} onClick={() => {}} />)
     const button = screen.getByRole('button')

@@ -1,0 +1,575 @@
+import type { Intent, IntentClassification, MarketplaceEntities } from '../types'
+
+interface IntentPattern {
+  intent: Intent
+  keywords: RegExp[]
+  phrases: RegExp[]
+  confidence: number
+}
+
+const INTENT_PATTERNS: IntentPattern[] = [
+  {
+    intent: 'GREETING',
+    keywords: [],
+    phrases: [
+      /^(hi|hello|hey|howdy|good\s*(morning|afternoon|evening)|greetings|yo|sup)\b/i,
+      /^(what'?s?\s*up|how\s*are\s*you|how\s*doing)/i,
+    ],
+    confidence: 0.95,
+  },
+  {
+    intent: 'SEARCH_LISTINGS',
+    keywords: [
+      /find/i, /search/i, /looking\s*for/i, /need/i,
+      /available/i, /sell/i, /selling/i,
+    ],
+    phrases: [
+      /find\s+(?!on\b|in\b|at\b|the\b|a\b|an\b|some\b|my\b|your\b)\w+/i,
+      /search\s+(for\s+)?/i,
+      /looking\s+for\s+/i,
+      /show\s+me\s+\w+/i,
+      /need\s+a?\s*/i,
+      /where\s+(can\s+)?i\s+(find|buy|get)/i,
+      /any\s+\w+\s+(available|selling|for\s+sale)/i,
+      /do\s+you\s+have\s+\w+/i,
+      /buy\s+(a|an|some|the)\s+\w+/i,
+    ],
+    confidence: 0.9,
+  },
+  {
+    intent: 'BROWSE_CATEGORIES',
+    keywords: [/category/i, /categories/i, /browse/i, /explore/i, /list/i],
+    phrases: [
+      /what\s+categories/i,
+      /browse\s+categories/i,
+      /show\s+categories/i,
+      /list\s+of\s+categories/i,
+      /what\s+can\s+i\s+(find|buy|browse)/i,
+      /what\s+do\s+you\s+have/i,
+      /explore/i,
+    ],
+    confidence: 0.85,
+  },
+  {
+    intent: 'LISTING_DETAILS',
+    keywords: [/detail/i, /details/i, /info/i, /information/i, /about/i],
+    phrases: [
+      /tell\s+me\s+about/i,
+      /details?\s+(for|about|of)/i,
+      /what\s+(can\s+you\s+)?tell\s+me\s+about/i,
+      /more\s+(info|information|details)/i,
+      /listing\s*(id|#|\d+)/i,
+    ],
+    confidence: 0.85,
+  },
+  {
+    intent: 'BUYING_HELP',
+    keywords: [/buy/i, /buyer/i, /purchase/i, /pay/i, /payment/i, /order/i],
+    phrases: [
+      /how\s+(do\s+i|can\s+i)\s+buy/i,
+      /how\s+to\s+buy/i,
+      /buying\s+(process|guide|help|on)/i,
+      /purchase\s+(process|guide|help)/i,
+      /how\s+does\s+(buying|purchase|payment)/i,
+      /what\s+is\s+the\s+buying/i,
+      /payment\s+(method|option|process)/i,
+      /safe\s+to\s+buy/i,
+    ],
+    confidence: 0.85,
+  },
+  {
+    intent: 'SELLING_HELP',
+    keywords: [/sell/i, /seller/i, /post/i, /listing/i, /advertise/i],
+    phrases: [
+      /how\s+(do\s+i|can\s+i)\s+sell/i,
+      /how\s+to\s+sell/i,
+      /selling\s+(process|guide|help|on)/i,
+      /post\s+(a\s+)?listing/i,
+      /create\s+(a\s+)?listing/i,
+      /how\s+to\s+post/i,
+      /list\s+(an?\s+)?item/i,
+      /sell\s+my/i,
+    ],
+    confidence: 0.85,
+  },
+  {
+    intent: 'LISTING_ADVICE',
+    keywords: [/advice/i, /tip/i, /tips/i, /suggest/i, /improve/i, /better/i],
+    phrases: [
+      /how\s+to\s+(write|create|make|improve)/i,
+      /tips?\s+for\s+(selling|listing|posting)/i,
+      /advice\s+for\s+(selling|listing|posting)/i,
+      /how\s+to\s+attract\s+buyers/i,
+      /make\s+(my\s+)?listing\s+better/i,
+      /improve\s+(my\s+)?listing/i,
+    ],
+    confidence: 0.8,
+  },
+  {
+    intent: 'PRICING_HELP',
+    keywords: [/price/i, /pricing/i, /cost/i, /worth/i, /value/i, /how\s+much/i, /rate/i],
+    phrases: [
+      /how\s+much\s+(should\s+)?(i\s+)?(charge|price|ask)/i,
+      /what\s+(is|should\s+be)\s+the\s+price/i,
+      /fair\s+price/i,
+      /right\s+price/i,
+      /price\s+(guide|suggestion|advice|help|check)/i,
+      /estimate\s+(price|value|worth)/i,
+      /is\s+it\s+(worth|priced)/i,
+      /overpriced|underpriced/i,
+    ],
+    confidence: 0.85,
+  },
+  {
+    intent: 'SAFETY',
+    keywords: [/safe/i, /safety/i, /scam/i, /fraud/i, /secure/i, /trust/i],
+    phrases: [
+      /is\s+it\s+safe/i,
+      /safety\s+(tips?|guide|advice|concern)/i,
+      /how\s+to\s+stay\s+safe/i,
+      /avoid\s+scam/i,
+      /prevent\s+fraud/i,
+      /is\s+this\s+(a\s+)?scam/i,
+      /trust\s+(this|seller)/i,
+      /payment\s+safety/i,
+      /otp\s+scam/i,
+      /upi\s+scam/i,
+      /bank\s+transfer\s+risk/i,
+      /fake\s+(seller|listing)/i,
+    ],
+    confidence: 0.9,
+  },
+  {
+    intent: 'CONTACT_SELLER',
+    keywords: [/contact/i, /reach/i, /message/i, /call/i, /phone/i, /seller/i, /talk/i],
+    phrases: [
+      /how\s+(do\s+i|can\s+i)\s+(contact|reach|message)/i,
+      /contact\s+(the\s+)?seller/i,
+      /talk\s+to\s+(the\s+)?seller/i,
+      /message\s+(the\s+)?seller/i,
+      /phone\s+number/i,
+      /seller\s+(contact|info|detail)/i,
+    ],
+    confidence: 0.85,
+  },
+  {
+    intent: 'PLATFORM_HELP',
+    keywords: [/platform/i, /website/i, /app/i, /feature/i, /how\s+does/i, /work/i],
+    phrases: [
+      /how\s+(does|do)\s+(this|it|the\s+platform)/i,
+      /how\s+to\s+use/i,
+      /platform\s+(help|guide|feature|work)/i,
+      /what\s+can\s+(i|you)\s+do/i,
+      /feature/i,
+      /account\s+(setup|create|delete|manage)/i,
+      /settings/i,
+      /what\s+(are|is)\s+the\s+(fees?|cost|charge|price)/i,
+      /how\s+much\s+(does|do)\s+(it|this)\s+cost/i,
+      /is\s+it\s+free/i,
+    ],
+    confidence: 0.8,
+  },
+  {
+    intent: 'ACCOUNT_HELP',
+    keywords: [/account/i, /profile/i, /password/i, /login/i, /signup/i, /register/i, /sign\s*in/i],
+    phrases: [
+      /how\s+to\s+(create|make|set\s*up)\s+(an?\s+)?account/i,
+      /forgot\s+(my\s+)?password/i,
+      /reset\s+password/i,
+      /login\s+(issue|problem|help)/i,
+      /sign\s*(in|up)\s+(issue|problem|help)/i,
+      /delete\s+(my\s+)?account/i,
+      /edit\s+(my\s+)?profile/i,
+    ],
+    confidence: 0.85,
+  },
+  {
+    intent: 'COMPARISON',
+    keywords: [/compare/i, /vs/i, /versus/i, /difference/i, /better/i, /best/i],
+    phrases: [
+      /compare\s+/i,
+      /what\s+(is\s+)?the\s+difference/i,
+      /which\s+is\s+better/i,
+      /best\s+\w+\s+(under|below|around)/i,
+      /vs\.?|versus/i,
+    ],
+    confidence: 0.8,
+  },
+  {
+    intent: 'RECOMMENDATION',
+    keywords: [/recommend/i, /suggest/i, /advice/i, /what\s+should/i, /best/i],
+    phrases: [
+      /recommend\s+(a|me|some)/i,
+      /what\s+should\s+i\s+(buy|look|get)/i,
+      /suggest\s+(a|me|some)/i,
+      /best\s+(option|choice|pick)/i,
+      /what\s+do\s+you\s+recommend/i,
+    ],
+    confidence: 0.8,
+  },
+  {
+    intent: 'UNSUPPORTED',
+    keywords: [],
+    phrases: [
+      /\b(write|compose|create)\s+(me\s+)?(a\s+)?(poem|song|story|essay|article)\b/i,
+      /\b(what\s+is\s+the\s+meaning\s+of\s+life)\b/i,
+      /\b(tell\s+me\s+a\s+joke)\b/i,
+      /\b(sing|dance|draw|paint)\b/i,
+    ],
+    confidence: 0.9,
+  },
+  {
+    intent: 'SMALL_TALK',
+    keywords: [],
+    phrases: [
+      /^(bye|goodbye|see\s+you|take\s+care|thanks|thank\s+you|thx|ty|ok|okay|sure|cool|nice|great|awesome)\s*[!.?]*$/i,
+      /^(how'?s?\s+it\s+going|what'?s?\s+new|how'?s?\s+life)/i,
+      /^(lol|haha|hehe|rofl|lmao)/i,
+    ],
+    confidence: 0.7,
+  },
+  {
+    intent: 'ADMIN_ACTION',
+    keywords: [/admin/i, /moderate/i, /moderation/i, /ban/i, /remove/i, /delete/i],
+    phrases: [
+      /admin\s+(panel|dashboard|action|task)/i,
+      /moderate\s+(listing|user|content)/i,
+      /system\s+(status|health|check)/i,
+      /platform\s+(status|analytics|metric)/i,
+    ],
+    confidence: 0.85,
+  },
+  {
+    intent: 'OFFENSIVE',
+    keywords: [],
+    phrases: [
+      /\b(idiot|stupid|dumb|moron|ass|damn|hell|crap)\b/i,
+      /\b(fuck|shit|bitch|ass|dick)\b/i,
+      /\b(hate|kill|die|death|threat)\b/i,
+    ],
+    confidence: 0.9,
+  },
+]
+
+const CATEGORY_MAP: Record<string, string> = {
+  phone: 'Mobiles & Tablets', phones: 'Mobiles & Tablets', mobile: 'Mobiles & Tablets',
+  mobiles: 'Mobiles & Tablets', smartphone: 'Mobiles & Tablets', iphone: 'Mobiles & Tablets',
+  samsung: 'Mobiles & Tablets', android: 'Mobiles & Tablets', tablet: 'Mobiles & Tablets',
+  ipad: 'Mobiles & Tablets',
+  laptop: 'Computers & Laptops', laptops: 'Computers & Laptops', computer: 'Computers & Laptops',
+  macbook: 'Computers & Laptops', notebook: 'Computers & Laptops',
+  bike: 'Bikes & Scooters', bikes: 'Bikes & Scooters', motorcycle: 'Bikes & Scooters',
+  motorbike: 'Bikes & Scooters', scooter: 'Bikes & Scooters', bicycle: 'Bikes & Scooters',
+  cycle: 'Bikes & Scooters',
+  car: 'Cars & Vehicles', cars: 'Cars & Vehicles', vehicle: 'Cars & Vehicles',
+  automobile: 'Cars & Vehicles', sedan: 'Cars & Vehicles', suv: 'Cars & Vehicles',
+  house: 'Real Estate', apartment: 'Real Estate', flat: 'Real Estate',
+  rent: 'Real Estate', rental: 'Real Estate', property: 'Real Estate',
+  furniture: 'Home & Furniture', sofa: 'Home & Furniture', table: 'Home & Furniture',
+  chair: 'Home & Furniture', bed: 'Home & Furniture', wardrobe: 'Home & Furniture',
+  tv: 'Electronics & Appliances', television: 'Electronics & Appliances',
+  monitor: 'Electronics & Appliances', display: 'Electronics & Appliances',
+  camera: 'Electronics & Appliances', cameras: 'Electronics & Appliances',
+  dslr: 'Electronics & Appliances', gopro: 'Electronics & Appliances',
+  shoes: 'Fashion & Accessories', sneakers: 'Fashion & Accessories',
+  boots: 'Fashion & Accessories', sandals: 'Fashion & Accessories',
+  shirt: 'Fashion & Accessories', tshirt: 'Fashion & Accessories',
+  't-shirt': 'Fashion & Accessories', jeans: 'Fashion & Accessories',
+  pants: 'Fashion & Accessories', dress: 'Fashion & Accessories',
+  clothes: 'Fashion & Accessories', clothing: 'Fashion & Accessories',
+  jacket: 'Fashion & Accessories', coat: 'Fashion & Accessories',
+  bag: 'Fashion & Accessories', bags: 'Fashion & Accessories',
+  backpack: 'Fashion & Accessories', handbag: 'Fashion & Accessories',
+  luggage: 'Fashion & Accessories', watch: 'Fashion & Accessories',
+  watches: 'Fashion & Accessories', smartwatch: 'Fashion & Accessories',
+  book: 'Books, Music & Gaming', books: 'Books, Music & Gaming',
+  textbook: 'Books, Music & Gaming', novel: 'Books, Music & Gaming',
+  guitar: 'Books, Music & Gaming', piano: 'Books, Music & Gaming',
+  keyboard: 'Books, Music & Gaming', instrument: 'Books, Music & Gaming',
+  gaming: 'Books, Music & Gaming', playstation: 'Books, Music & Gaming',
+  xbox: 'Books, Music & Gaming', nintendo: 'Books, Music & Gaming',
+  ps5: 'Books, Music & Gaming', ps4: 'Books, Music & Gaming',
+  headphones: 'Electronics & Appliances', earbuds: 'Electronics & Appliances',
+  earphones: 'Electronics & Appliances', speaker: 'Electronics & Appliances',
+  speakers: 'Electronics & Appliances',
+  pet: 'Pets & Pet Care', dog: 'Pets & Pet Care', cat: 'Pets & Pet Care',
+  puppy: 'Pets & Pet Care', kitten: 'Pets & Pet Care',
+  sports: 'Sports & Leisure', cricket: 'Sports & Leisure', football: 'Sports & Leisure',
+  bat: 'Sports & Leisure', racket: 'Sports & Leisure',
+  baby: 'Baby & Kids', stroller: 'Baby & Kids', crib: 'Baby & Kids',
+  toys: 'Baby & Kids', toy: 'Baby & Kids',
+  kitchen: 'Home & Furniture', appliance: 'Electronics & Appliances',
+  mixer: 'Electronics & Appliances', oven: 'Electronics & Appliances',
+  microwave: 'Electronics & Appliances', fridge: 'Electronics & Appliances',
+  refrigerator: 'Electronics & Appliances',
+  tool: 'Other', tools: 'Other', drill: 'Other', saw: 'Other',
+}
+
+function extractBudget(text: string): { min?: number; max?: number } | undefined {
+  const underMatch = text.match(/(?:under|below|less\s+than|within|upto|up\s+to)\s*(?:rs\.?|inr|₹)?\s*(\d[\d,]*)/i)
+  if (underMatch) {
+    const val = parseInt(underMatch[1].replace(/,/g, ''), 10)
+    if (!isNaN(val) && val > 0) return { max: val }
+  }
+
+  const aboveMatch = text.match(/(?:above|over|more\s+than|greater\s+than)\s*(?:rs\.?|inr|₹)?\s*(\d[\d,]*)/i)
+  if (aboveMatch) {
+    const val = parseInt(aboveMatch[1].replace(/,/g, ''), 10)
+    if (!isNaN(val) && val > 0) return { min: val }
+  }
+
+  const rangeMatch = text.match(/(?:rs\.?|inr|₹)?\s*(\d[\d,]*)\s*(?:to|-)\s*(?:rs\.?|inr|₹)?\s*(\d[\d,]*)/i)
+  if (rangeMatch) {
+    const min = parseInt(rangeMatch[1].replace(/,/g, ''), 10)
+    const max = parseInt(rangeMatch[2].replace(/,/g, ''), 10)
+    if (!isNaN(min) && !isNaN(max) && min > 0 && max > 0) return { min, max }
+  }
+
+  const standaloneMatch = text.match(/(?:rs\.?|inr|₹)\s*(\d[\d,]*)/i)
+  if (standaloneMatch) {
+    const val = parseInt(standaloneMatch[1].replace(/,/g, ''), 10)
+    if (!isNaN(val) && val > 0) return { max: val }
+  }
+
+  return undefined
+}
+
+function extractCategory(text: string): string | undefined {
+  const normalized = text.toLowerCase()
+  for (const [keyword, category] of Object.entries(CATEGORY_MAP)) {
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i')
+    if (regex.test(normalized)) return category
+  }
+  return undefined
+}
+
+function extractLocation(text: string): string | undefined {
+  const patterns = [
+    /(?:in|at|near|from|around)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g,
+    /(?:in|at|near|from|around)\s+([a-z]+(?:\s+[a-z]+)*)/g,
+  ]
+
+  const locationStopWords = new Set([
+    'the', 'a', 'an', 'this', 'that', 'it', 'my', 'your', 'his', 'her',
+    'what', 'which', 'where', 'how', 'when', 'why', 'who',
+    'buy', 'sell', 'find', 'search', 'show', 'get', 'need', 'want',
+    'price', 'cost', 'cheap', 'expensive', 'good', 'best', 'new', 'used',
+    'please', 'help', 'can', 'could', 'would', 'should', 'will',
+    'phone', 'laptop', 'bike', 'car', 'book', 'camera', 'shoes',
+    'under', 'above', 'between', 'with', 'for', 'about',
+  ])
+
+  for (const pattern of patterns) {
+    const regex = new RegExp(pattern.source, pattern.flags)
+    let match
+    while ((match = regex.exec(text)) !== null) {
+      const loc = match[1].trim()
+      const words = loc.split(/\s+/)
+      const filtered = words.filter(w => !locationStopWords.has(w.toLowerCase()))
+      if (filtered.length > 0 && filtered.join('').length >= 3) {
+        const capitalized = filtered.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+        if (capitalized.length >= 3) return capitalized
+      }
+    }
+  }
+
+  return undefined
+}
+
+function extractBrand(text: string): string | undefined {
+  const brands = [
+    'apple', 'samsung', 'sony', 'lg', 'oneplus', 'xiaomi', 'redmi', 'realme',
+    'vivo', 'oppo', 'nokia', 'motorola', 'google', 'pixel',
+    'dell', 'hp', 'lenovo', 'asus', 'acer', 'msi', 'macbook',
+    'toyota', 'honda', 'hyundai', 'maruti', 'suzuki', 'tata', 'mahindra', 'bmw', 'mercedes',
+    'nike', 'adidas', 'puma', 'reebok',
+    'canon', 'nikon', 'sony', 'gopro', 'dji',
+    'ikea', 'godrej', 'pepperfry',
+  ]
+
+  const normalized = text.toLowerCase()
+  for (const brand of brands) {
+    if (normalized.includes(brand)) return brand.charAt(0).toUpperCase() + brand.slice(1)
+  }
+  return undefined
+}
+
+function extractCondition(text: string): string | undefined {
+  const conditions: [RegExp, string][] = [
+    [/\b(new|brand\s*new|sealed|unopened|mint)\b/i, 'new'],
+    [/\b(used|pre[\s-]?owned|second\s*hand|old)\b/i, 'used'],
+    [/\b(refurbished|renewed|restored)\b/i, 'refurbished'],
+    [/\b(broken|damaged|faulty|not\s*working)\b/i, 'damaged'],
+  ]
+
+  for (const [pattern, condition] of conditions) {
+    if (pattern.test(text)) return condition
+  }
+  return undefined
+}
+
+function extractQuery(text: string): string | undefined {
+  const cleaned = text
+    .replace(/\b(find|search|looking\s+for|show\s+me|get\s+me|want\s+to\s+buy|need|buy|purchase|available|sell|selling)\b/gi, '')
+    .replace(/\b(under|below|over|above|less\s+than|more\s+than|within|upto|up\s+to)\b/gi, '')
+    .replace(/\b(in|at|near|from|around)\b/gi, '')
+    .replace(/\b(new|used|refurbished|cheap|best|good|great)\b/gi, '')
+    .replace(/(?:rs\.?|inr|₹)\s*\d[\d,]*/gi, '')
+    .replace(/\d[\d,]*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return cleaned.length >= 2 ? cleaned : undefined
+}
+
+function extractListingId(text: string): string | undefined {
+  const match = text.match(/(?:listing|item|ad)\s+(?:id\s*)?(?:#?\s*)?([A-Z0-9]{6,})/i)
+  if (match) return match[1]
+  const match2 = text.match(/(?:id|#)\s*[:=]?\s*([A-Z0-9]{6,})/i)
+  return match2 ? match2[1] : undefined
+}
+
+function extractEntities(text: string): MarketplaceEntities {
+  const entities: MarketplaceEntities = {}
+
+  const budget = extractBudget(text)
+  if (budget) entities.budget = budget
+
+  const category = extractCategory(text)
+  if (category) entities.category = category
+
+  const location = extractLocation(text)
+  if (location) entities.location = location
+
+  const brand = extractBrand(text)
+  if (brand) entities.brand = brand
+
+  const condition = extractCondition(text)
+  if (condition) entities.condition = condition
+
+  const listingId = extractListingId(text)
+  if (listingId) entities.listingId = listingId
+
+  const query = extractQuery(text)
+  if (query) entities.query = query
+
+  if (/\b(buy|buying|purchase|want\s+to\s+buy)\b/i.test(text)) entities.buyerIntent = true
+  if (/\b(sell|selling|sell\s+my|list\s+my)\b/i.test(text)) entities.sellerIntent = true
+
+  return entities
+}
+
+function getMissingInformation(intent: Intent, entities: MarketplaceEntities): string[] {
+  const missing: string[] = []
+
+  switch (intent) {
+    case 'SEARCH_LISTINGS':
+      if (!entities.category && !entities.query) missing.push('category')
+      if (!entities.budget) missing.push('budget')
+      if (!entities.location) missing.push('location')
+      break
+    case 'LISTING_DETAILS':
+      if (!entities.listingId && !entities.query) missing.push('listing')
+      break
+    case 'PRICING_HELP':
+      if (!entities.category && !entities.query) missing.push('item')
+      break
+    case 'CONTACT_SELLER':
+      if (!entities.listingId) missing.push('listing')
+      break
+    case 'COMPARISON':
+      if (!entities.category && !entities.query) missing.push('items to compare')
+      break
+    case 'RECOMMENDATION':
+      if (!entities.category && !entities.query) missing.push('what you need')
+      break
+  }
+
+  return missing
+}
+
+export function classifyIntent(message: string): IntentClassification {
+  const trimmed = message.trim()
+
+  if (trimmed.length === 0) {
+    return {
+      intent: 'UNKNOWN',
+      confidence: 0,
+      entities: {},
+      missingInformation: [],
+      requiresClarification: false,
+    }
+  }
+
+  let bestPhraseMatch: IntentPattern | null = null
+  let bestPhraseScore = 0
+
+  for (const pattern of INTENT_PATTERNS) {
+    let phraseCount = 0
+    for (const phrase of pattern.phrases) {
+      if (phrase.test(trimmed)) {
+        phraseCount++
+      }
+    }
+    if (phraseCount > 0) {
+      const score = pattern.confidence * phraseCount
+      if (score > bestPhraseScore) {
+        bestPhraseScore = score
+        bestPhraseMatch = pattern
+      }
+    }
+  }
+
+  if (bestPhraseMatch && bestPhraseScore > 0.5) {
+    const entities = extractEntities(trimmed)
+    const missing = getMissingInformation(bestPhraseMatch.intent, entities)
+    return {
+      intent: bestPhraseMatch.intent,
+      confidence: Math.min(bestPhraseMatch.confidence, 1),
+      entities,
+      missingInformation: missing,
+      requiresClarification: missing.length > 0 && bestPhraseMatch.intent === 'SEARCH_LISTINGS',
+    }
+  }
+
+  let bestKeywordMatch: IntentPattern | null = null
+  let bestKeywordScore = 0
+
+  for (const pattern of INTENT_PATTERNS) {
+    let keywordCount = 0
+    for (const keyword of pattern.keywords) {
+      if (keyword.test(trimmed)) {
+        keywordCount++
+      }
+    }
+    if (keywordCount > 0) {
+      const score = pattern.confidence * keywordCount * 0.4
+      if (score > bestKeywordScore) {
+        bestKeywordScore = score
+        bestKeywordMatch = pattern
+      }
+    }
+  }
+
+  if (bestKeywordMatch && bestKeywordScore > 0.5) {
+    const entities = extractEntities(trimmed)
+    const missing = getMissingInformation(bestKeywordMatch.intent, entities)
+    return {
+      intent: bestKeywordMatch.intent,
+      confidence: Math.min(bestKeywordMatch.confidence * 0.7, 1),
+      entities,
+      missingInformation: missing,
+      requiresClarification: missing.length > 0 && bestKeywordMatch.intent === 'SEARCH_LISTINGS',
+    }
+  }
+
+  const entities = extractEntities(trimmed)
+
+  return {
+    intent: 'UNKNOWN',
+    confidence: 0.3,
+    entities,
+    missingInformation: [],
+    requiresClarification: false,
+  }
+}

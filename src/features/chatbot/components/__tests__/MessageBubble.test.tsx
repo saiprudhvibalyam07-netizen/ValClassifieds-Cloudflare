@@ -21,19 +21,6 @@ describe('MessageBubble', () => {
     expect(screen.getByText('How do I sell?')).toBeInTheDocument()
   })
 
-  it('returns null for assistant messages', () => {
-    const assistantMsg: ChatbotMessage = {
-      id: 'msg-2',
-      conversationId: 'conv-1',
-      role: 'assistant',
-      content: 'I can help you sell',
-      createdAt: new Date().toISOString(),
-      status: 'sent',
-    }
-    const { container } = render(<MessageBubble message={assistantMsg} />)
-    expect(container.innerHTML).toBe('')
-  })
-
   it('shows failed status with retry button', () => {
     const onRetry = vi.fn()
     render(

@@ -1,165 +1,152 @@
-import { describe, it, expect } from 'vitest'
-import { buildConversationContext, buildFullMessageList } from '../contextBuilder'
-import { buildSystemPrompt } from '../promptBuilder'
-import type { ChatbotMessage } from '../../types'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { conversationContext } from '../conversationContext'
 
-function msg(content: string, role: 'user' | 'assistant' = 'user'): ChatbotMessage {
-  return {
-    id: crypto.randomUUID(),
-    conversationId: 'conv-1',
-    role,
-    content,
-    createdAt: new Date().toISOString(),
-    status: 'sent',
-  }
-}
+describe('conversationContext', () => {
+  beforeEach(() => {
+    conversationContext.reset()
+  })
 
-describe('Conversation Context Edge Cases', () => {
-  describe('Empty and Boundary States', () => {
-    it('handles null messages gracefully', () => {
-      const ctx = buildConversationContext([])
-      expect(ctx).toEqual([])
-    })
-
-    it('handles single user message', () => {
-      const ctx = buildConversationContext([msg('Hello')])
-      expect(ctx).toHaveLength(1)
-      expect(ctx[0].role).toBe('user')
-    })
-
-    it('handles single assistant message', () => {
-      const ctx = buildConversationContext([msg('Hello', 'assistant')])
-      expect(ctx).toHaveLength(1)
-      expect(ctx[0].role).toBe('assistant')
-    })
-
-    it('handles alternating messages', () => {
-      const messages = [
-        msg('A', 'user'),
-        msg('B', 'assistant'),
-        msg('C', 'user'),
-        msg('D', 'assistant'),
-      ]
-      const ctx = buildConversationContext(messages)
-      expect(ctx).toHaveLength(4)
-      expect(ctx.map((m) => m.content)).toEqual(['A', 'B', 'C', 'D'])
+  describe('getContext', () => {
+    it('returns default context', () => {
+      const ctx = conversationContext.getContext()
+      expect(ctx.lastIntent).toBeNull()
+      expect(ctx.conversationStage).toBe('greeting')
+      expect(ctx.clarificationCount).toBe(0)
     })
   })
 
-  describe('Large Histories', () => {
-    it('caps at 20 messages', () => {
-      const messages = Array.from({ length: 50 }, (_, i) => msg(`Message ${i}`))
-      const ctx = buildConversationContext(messages)
-      expect(ctx.length).toBeLessThanOrEqual(20)
+  describe('updateContext', () => {
+    it('updates last intent', () => {
+      const ctx = conversationContext.updateContext('SEARCH_LISTINGS', { category: 'phones' })
+      expect(ctx.lastIntent).toBe('SEARCH_LISTINGS')
     })
 
-    it('preserves order when capped', () => {
-      const messages = Array.from({ length: 25 }, (_, i) => msg(`Msg ${i}`))
-      const ctx = buildConversationContext(messages)
-      expect(ctx[0].content).toBe('Msg 5')
-      expect(ctx[ctx.length - 1].content).toBe('Msg 24')
+    it('merges entities', () => {
+      conversationContext.updateContext('SEARCH_LISTINGS', { category: 'phones' })
+      const ctx = conversationContext.updateContext('SEARCH_LISTINGS', { budget: { max: 20000 } })
+      expect(ctx.lastEntities.category).toBe('phones')
+      expect(ctx.lastEntities.budget?.max).toBe(20000)
     })
 
-    it('handles exactly 20 messages', () => {
-      const messages = Array.from({ length: 20 }, (_, i) => msg(`Message ${i}`))
-      const ctx = buildConversationContext(messages)
-      expect(ctx).toHaveLength(20)
+    it('updates conversation stage', () => {
+      const ctx = conversationContext.updateContext('SEARCH_LISTINGS', {})
+      expect(ctx.conversationStage).toBe('searching')
     })
 
-    it('handles exactly 21 messages (one over cap)', () => {
-      const messages = Array.from({ length: 21 }, (_, i) => msg(`Message ${i}`))
-      const ctx = buildConversationContext(messages)
-      expect(ctx.length).toBeLessThanOrEqual(20)
-      expect(ctx[0].content).toBe('Message 1')
-    })
-  })
-
-  describe('Token-Limited Context', () => {
-    it('truncates when messages exceed token budget', () => {
-      const longMsg = msg('Long message content '.repeat(200))
-      const shortMsg = msg('Short')
-      const messages = [longMsg, longMsg, shortMsg]
-      const ctx = buildConversationContext(messages, 100)
-      expect(ctx.length).toBeLessThan(3)
+    it('sets current goal for search', () => {
+      const ctx = conversationContext.updateContext('SEARCH_LISTINGS', { category: 'phones' })
+      expect(ctx.currentGoal).toContain('phones')
     })
 
-    it('includes complete messages when under budget', () => {
-      const messages = [msg('A'), msg('B'), msg('C')]
-      const ctx = buildConversationContext(messages, 1000)
-      expect(ctx).toHaveLength(3)
+    it('sets current goal for search with budget', () => {
+      const ctx = conversationContext.updateContext('SEARCH_LISTINGS', {
+        category: 'phones',
+        budget: { max: 20000 },
+      })
+      expect(ctx.currentGoal).toContain('20000')
     })
 
-    it('returns empty for messages that all exceed budget', () => {
-      const hugeMsg = msg('A'.repeat(10000))
-      const ctx = buildConversationContext([hugeMsg], 10)
-      expect(ctx).toHaveLength(0)
-    })
-  })
-
-  describe('Full Message List Assembly', () => {
-    it('places system prompt first', () => {
-      const system = 'You are ValBot'
-      const context = [{ role: 'user' as const, content: 'Hello' }]
-      const full = buildFullMessageList(system, context, 'Hi')
-      expect(full[0].role).toBe('system')
-      expect(full[0].content).toBe(system)
+    it('builds search filters', () => {
+      const ctx = conversationContext.updateContext('SEARCH_LISTINGS', {
+        category: 'phones',
+        budget: { max: 20000 },
+        location: 'Delhi',
+      })
+      expect(ctx.searchFilters?.categories).toContain('phones')
+      expect(ctx.searchFilters?.maxPrice).toBe(20000)
+      expect(ctx.searchFilters?.location).toBe('Delhi')
     })
 
-    it('places user message last', () => {
-      const system = buildSystemPrompt('visitor')
-      const context = [{ role: 'user' as const, content: 'Previous question' }]
-      const full = buildFullMessageList(system, context, 'New question')
-      expect(full[full.length - 1].role).toBe('user')
-      expect(full[full.length - 1].content).toBe('New question')
+    it('resets clarification count', () => {
+      conversationContext.incrementClarification()
+      conversationContext.incrementClarification()
+      const ctx = conversationContext.updateContext('GREETING', {})
+      expect(ctx.clarificationCount).toBe(0)
     })
 
-    it('includes context between system and user', () => {
-      const system = buildSystemPrompt('visitor')
-      const context = [
-        { role: 'user' as const, content: 'Q1' },
-        { role: 'assistant' as const, content: 'A1' },
-      ]
-      const full = buildFullMessageList(system, context, 'Q2')
-      expect(full).toHaveLength(4)
-      expect(full[1].content).toBe('Q1')
-      expect(full[2].content).toBe('A1')
+    it('handles greeting stage', () => {
+      const ctx = conversationContext.updateContext('GREETING', {})
+      expect(ctx.conversationStage).toBe('greeting')
     })
 
-    it('works with empty context', () => {
-      const system = buildSystemPrompt('visitor')
-      const full = buildFullMessageList(system, [], 'First question')
-      expect(full).toHaveLength(2)
-      expect(full[0].role).toBe('system')
-      expect(full[1].role).toBe('user')
+    it('handles browsing stage', () => {
+      const ctx = conversationContext.updateContext('BROWSE_CATEGORIES', {})
+      expect(ctx.conversationStage).toBe('exploring')
+    })
+
+    it('handles evaluating stage', () => {
+      const ctx = conversationContext.updateContext('LISTING_DETAILS', {})
+      expect(ctx.conversationStage).toBe('evaluating')
+    })
+
+    it('handles support stage', () => {
+      const ctx = conversationContext.updateContext('BUYING_HELP', {})
+      expect(ctx.conversationStage).toBe('support')
+    })
+
+    it('handles transacting stage', () => {
+      const ctx = conversationContext.updateContext('CONTACT_SELLER', {})
+      expect(ctx.conversationStage).toBe('transacting')
     })
   })
 
-  describe('Role Preservation', () => {
-    it('preserves user role', () => {
-      const messages = [msg('Hello')]
-      const ctx = buildConversationContext(messages)
-      expect(ctx[0].role).toBe('user')
+  describe('incrementClarification', () => {
+    it('increments count', () => {
+      conversationContext.incrementClarification()
+      const ctx = conversationContext.getContext()
+      expect(ctx.clarificationCount).toBe(1)
     })
 
-    it('preserves assistant role', () => {
-      const messages = [msg('Hello', 'assistant')]
-      const ctx = buildConversationContext(messages)
-      expect(ctx[0].role).toBe('assistant')
+    it('increments multiple times', () => {
+      conversationContext.incrementClarification()
+      conversationContext.incrementClarification()
+      const ctx = conversationContext.getContext()
+      expect(ctx.clarificationCount).toBe(2)
+    })
+  })
+
+  describe('setLastResponse', () => {
+    it('stores last response', () => {
+      conversationContext.setLastResponse('Hello there!')
+      const ctx = conversationContext.getContext()
+      expect(ctx.lastResponse).toBe('Hello there!')
+    })
+  })
+
+  describe('reset', () => {
+    it('clears all context', () => {
+      conversationContext.updateContext('SEARCH_LISTINGS', { category: 'phones' })
+      conversationContext.setLastResponse('test')
+      conversationContext.reset()
+      const ctx = conversationContext.getContext()
+      expect(ctx.lastIntent).toBeNull()
+      expect(ctx.lastEntities).toEqual({})
+      expect(ctx.lastResponse).toBeNull()
+    })
+  })
+
+  describe('conversation-scoped context', () => {
+    it('maintains separate contexts per conversation', () => {
+      conversationContext.updateContext('SEARCH_LISTINGS', { category: 'phones' }, 'conv-1')
+      conversationContext.updateContext('BUYING_HELP', {}, 'conv-2')
+
+      const ctx1 = conversationContext.getContext('conv-1')
+      const ctx2 = conversationContext.getContext('conv-2')
+
+      expect(ctx1.lastIntent).toBe('SEARCH_LISTINGS')
+      expect(ctx2.lastIntent).toBe('BUYING_HELP')
     })
 
-    it('filters out system role messages', () => {
-      const systemMsg: ChatbotMessage = {
-        id: 'sys-1',
-        conversationId: 'conv-1',
-        role: 'system',
-        content: 'System instruction',
-        createdAt: new Date().toISOString(),
-        status: 'sent',
-      }
-      const messages = [systemMsg, msg('Hello')]
-      const ctx = buildConversationContext(messages)
-      expect(ctx).toHaveLength(1)
-      expect(ctx[0].role).toBe('user')
+    it('returns default for unknown conversation', () => {
+      const ctx = conversationContext.getContext('unknown-conv')
+      expect(ctx.lastIntent).toBeNull()
+    })
+
+    it('resets specific conversation', () => {
+      conversationContext.updateContext('SEARCH_LISTINGS', {}, 'conv-1')
+      conversationContext.reset('conv-1')
+      const ctx = conversationContext.getContext('conv-1')
+      expect(ctx.lastIntent).toBeNull()
     })
   })
 })

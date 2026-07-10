@@ -29,6 +29,7 @@ export interface ChatbotMessage {
   content: string
   createdAt: string
   status: MessageStatus
+  metadata?: Record<string, unknown>
 }
 
 export interface ChatState {
@@ -50,6 +51,7 @@ export interface SendMessageParams {
 
 export interface MockResponse {
   content: string
+  structuredResponse?: import('./services/responseTypes').StructuredResponse
   delay: number
 }
 
@@ -127,7 +129,7 @@ export type ChatAction =
   | { type: 'RESET' }
   | { type: 'START_STREAM'; payload: { messageId: string; conversationId: string } }
   | { type: 'STREAM_TOKEN'; payload: { messageId: string; token: string } }
-  | { type: 'END_STREAM'; payload: { messageId: string } }
+  | { type: 'END_STREAM'; payload: { messageId: string; metadata?: Record<string, unknown> } }
   | { type: 'STREAM_ERROR'; payload: { messageId: string; error: string } }
 
 export type SourceType = 'faq' | 'policy' | 'help_center' | 'documentation'
@@ -421,3 +423,109 @@ export class FlagEvaluationError extends Error {
     this.name = 'FlagEvaluationError'
   }
 }
+
+// ─── Intent Detection Types ──────────────────────────────────────────────────
+
+export type Intent =
+  | 'GREETING'
+  | 'SEARCH_LISTINGS'
+  | 'BROWSE_CATEGORIES'
+  | 'LISTING_DETAILS'
+  | 'BUYING_HELP'
+  | 'SELLING_HELP'
+  | 'LISTING_ADVICE'
+  | 'PRICING_HELP'
+  | 'SAFETY'
+  | 'CONTACT_SELLER'
+  | 'PLATFORM_HELP'
+  | 'ACCOUNT_HELP'
+  | 'COMPARISON'
+  | 'RECOMMENDATION'
+  | 'SMALL_TALK'
+  | 'ADMIN_ACTION'
+  | 'OFFENSIVE'
+  | 'UNSUPPORTED'
+  | 'UNKNOWN'
+
+export interface MarketplaceEntities {
+  budget?: { min?: number; max?: number }
+  category?: string
+  location?: string
+  brand?: string
+  condition?: string
+  listingId?: string
+  query?: string
+  price?: number
+  buyerIntent?: boolean
+  sellerIntent?: boolean
+}
+
+export interface IntentClassification {
+  intent: Intent
+  confidence: number
+  entities: MarketplaceEntities
+  missingInformation: string[]
+  requiresClarification: boolean
+}
+
+export interface ClarificationResult {
+  shouldClarify: boolean
+  question: string
+  missingFields: string[]
+}
+
+export interface ConversationContextState {
+  lastIntent: Intent | null
+  lastEntities: MarketplaceEntities
+  currentGoal: string | null
+  conversationStage: ConversationStage
+  currentListing: string | null
+  searchFilters: SearchFilters | null
+  clarificationCount: number
+  lastResponse: string | null
+}
+
+export type ConversationStage =
+  | 'greeting'
+  | 'exploring'
+  | 'searching'
+  | 'evaluating'
+  | 'transacting'
+  | 'support'
+
+export type ResponseStrategy =
+  | 'ANSWER'
+  | 'CLARIFY'
+  | 'REDIRECT'
+  | 'SEARCH'
+  | 'HANDOFF'
+  | 'SAFETY_WARNING'
+  | 'UNSUPPORTED'
+
+export interface IntentHandler {
+  handle(
+    classification: IntentClassification,
+    context: ConversationContextState,
+    role: ChatbotRole
+  ): Promise<import('./services/responseTypes').StructuredResponse>
+}
+
+export interface ConversationPipelineResult {
+  classification: IntentClassification
+  strategy: ResponseStrategy
+  response: string
+  structuredResponse?: import('./services/responseTypes').StructuredResponse
+  context: ConversationContextState
+}
+
+// Re-export response types for convenience
+export type {
+  StructuredResponse,
+  ResponseSection,
+  ResponseSectionType,
+  ListingData,
+  SuggestedAction,
+  EmptyStateVariant,
+  SafetyVariant,
+  SuccessVariant,
+} from './services/responseTypes'

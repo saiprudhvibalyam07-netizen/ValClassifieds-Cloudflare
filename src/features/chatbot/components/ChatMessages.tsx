@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { ChatbotMessage } from '../types'
+import type { ChatbotMessage, StructuredResponse } from '../types'
 import { MessageBubble } from './MessageBubble'
 import { AssistantBubble } from './AssistantBubble'
 import { TypingIndicator } from './TypingIndicator'
@@ -39,7 +39,12 @@ export function ChatMessages({
             msg.role === 'user' ? (
               <MessageBubble key={msg.id} message={msg} onRetry={onRetry} />
             ) : (
-              <AssistantBubble key={msg.id} message={msg} />
+              <AssistantBubble
+                key={msg.id}
+                message={msg}
+                structuredResponse={msg.metadata?.structuredResponse as StructuredResponse | undefined}
+                onAction={onPromptClick}
+              />
             )
           )}
         </div>

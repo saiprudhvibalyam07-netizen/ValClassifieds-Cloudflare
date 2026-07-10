@@ -1,8 +1,33 @@
-import type { Recommendation, UserPreference, MarketplaceListing } from '../types'
+import type { Recommendation, UserPreference } from '../types'
+import type { MarketplaceListing } from '../types'
 import { MEMORY_CONFIG } from '../config'
-import { searchListings, getCategories } from './marketplaceIntelligence'
-import { retrieveContext } from './retrievalPipeline'
+import { searchListings, getCategoriesWithCounts } from './marketplaceSearch'
 import { logger } from './logger'
+
+function toMarketplaceListing(l: {
+  id: string
+  title: string
+  price: number
+  city: string | null
+  category?: { name: string } | null
+  condition: 'new' | 'used' | null
+  profile?: { full_name: string | null } | null
+  images?: { url: string }[] | null
+  user_id: string
+  created_at: string
+}): MarketplaceListing {
+  return {
+    id: l.id,
+    title: l.title,
+    price: l.price,
+    category: l.category?.name ?? 'Unknown',
+    location: l.city ?? 'Unknown',
+    sellerId: l.user_id,
+    status: 'active',
+    images: l.images?.map(i => i.url) ?? [],
+    createdAt: l.created_at,
+  }
+}
 
 export async function recommendListings(
   preferences: UserPreference[],
@@ -24,20 +49,27 @@ export async function recommendListings(
     categories: preferredCats.length > 0 ? preferredCats : undefined,
     location: preferredLoc,
     maxPrice,
+    status: 'active',
+    sort: 'newest',
+    limit: 20,
+    page: 1,
   })
 
-  const filtered = results.filter((l) => !excludeIds.includes(l.id))
+  const filtered = results.listings.filter((l) => !excludeIds.includes(l.id))
   const topK = MEMORY_CONFIG.recommendationTopK
 
-  const recommendations: Recommendation[] = filtered.slice(0, topK).map((listing, i) => ({
-    type: 'listing',
-    id: listing.id,
-    title: listing.title,
-    description: `₹${listing.price.toLocaleString()} — ${listing.location}`,
-    score: 1 - (i / filtered.length),
-    reason: buildListingReason(listing, preferences),
-    image: listing.images[0],
-  }))
+  const recommendations: Recommendation[] = filtered.slice(0, topK).map((listing, i) => {
+    const mpListing = toMarketplaceListing(listing)
+    return {
+      type: 'listing',
+      id: listing.id,
+      title: listing.title,
+      description: `₹${listing.price.toLocaleString()} — ${listing.city}`,
+      score: 1 - (i / filtered.length),
+      reason: buildListingReason(mpListing, preferences),
+      image: listing.images?.[0]?.url,
+    }
+  })
 
   logger.info('listings_recommended', { details: { count: recommendations.length } })
   return recommendations
@@ -53,45 +85,20 @@ export async function recommendCategories(
 
   if (preferredCats.length === 0) return []
 
-  const allCategories = await getCategories()
+  const allCategories = await getCategoriesWithCounts()
   const topK = MEMORY_CONFIG.recommendationTopK
 
   const recommendations: Recommendation[] = preferredCats.slice(0, topK).map((catName, i) => {
     const cat = allCategories.find((c) => c.name === catName)
     return {
       type: 'category',
-      id: cat?.id ?? catName,
+      id: cat?.slug ?? catName,
       title: catName,
-      description: cat ? `${cat.itemCount} items available` : 'Browse listings',
+      description: cat ? `${cat.activeCount} items available` : 'Browse listings',
       score: 1 - (i / topK),
       reason: `Based on your interest in ${catName.toLowerCase()}`,
     }
   })
-
-  return recommendations
-}
-
-export async function recommendResources(
-  preferences: UserPreference[]
-): Promise<Recommendation[]> {
-  const preferredCats = preferences
-    .filter((p) => p.key === 'preferred_category')
-    .map((p) => p.value as string)
-
-  const query = preferredCats.length > 0
-    ? `Information about ${preferredCats.slice(0, 3).join(', ')} buying selling`
-    : 'Buying and selling tips'
-
-  const result = await retrieveContext({ query, topK: 3, useHybridSearch: true })
-
-  const recommendations: Recommendation[] = result.chunks.map((sc, _i) => ({
-    type: 'resource',
-    id: sc.chunk.id,
-    title: sc.chunk.metadata.sourceTitle as string ?? 'Resource',
-    description: sc.chunk.content.slice(0, 120),
-    score: sc.score,
-    reason: 'Relevant marketplace resource',
-  }))
 
   return recommendations
 }
@@ -105,8 +112,8 @@ export async function recommendSellers(
 
   if (preferredCats.length === 0) return []
 
-  const results = await searchListings({ categories: preferredCats })
-  const sellerIds = new Set(results.map((l) => l.sellerId))
+  const results = await searchListings({ categories: preferredCats, status: 'active', limit: 20 })
+  const sellerIds = new Set(results.listings.map((l) => l.user_id))
 
   const recommendations: Recommendation[] = Array.from(sellerIds).slice(0, MEMORY_CONFIG.recommendationTopK).map((id, i) => ({
     type: 'seller',
@@ -124,14 +131,13 @@ export async function recommendAll(
   preferences: UserPreference[],
   excludeListingIds: string[] = []
 ): Promise<{ listings: Recommendation[]; categories: Recommendation[]; sellers: Recommendation[]; resources: Recommendation[] }> {
-  const [listings, categories, sellers, resources] = await Promise.all([
+  const [listings, categories, sellers] = await Promise.all([
     recommendListings(preferences, excludeListingIds),
     recommendCategories(preferences),
     recommendSellers(preferences),
-    recommendResources(preferences),
   ])
 
-  return { listings, categories, sellers, resources }
+  return { listings, categories, sellers, resources: [] }
 }
 
 function buildListingReason(listing: MarketplaceListing, preferences: UserPreference[]): string {

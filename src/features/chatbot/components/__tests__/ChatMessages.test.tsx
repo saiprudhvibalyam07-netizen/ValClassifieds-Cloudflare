@@ -64,7 +64,7 @@ describe('ChatMessages', () => {
       />
     )
     expect(screen.getByText('ValBot')).toBeInTheDocument()
-    expect(screen.getByText('AI Assistant')).toBeInTheDocument()
+    expect(screen.getByText('Marketplace Assistant')).toBeInTheDocument()
   })
 
   it('has correct ARIA attributes', () => {

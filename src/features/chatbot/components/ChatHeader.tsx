@@ -5,17 +5,16 @@ import { ChatMenu } from './ChatMenu'
 interface ChatHeaderProps {
   role: ChatbotRole
   onClose: () => void
-  onMinimize?: () => void
   onNewChat: () => void
   onClearConversation: () => void
   onAbout: () => void
 }
 
 const roleTitles: Record<ChatbotRole, string> = {
-  visitor: 'ValBot Assistant',
-  buyer: 'ValBot Assistant',
-  seller: 'ValBot Seller Help',
-  admin: 'ValBot Admin',
+  visitor: 'ValBot',
+  buyer: 'ValBot',
+  seller: 'ValBot',
+  admin: 'ValBot',
 }
 
 export function ChatHeader({ role, onClose, onNewChat, onClearConversation, onAbout }: ChatHeaderProps) {
