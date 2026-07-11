@@ -6,7 +6,8 @@ import type {
 } from './responseTypes'
 import { getSectionsForIntent, INTENT_ACTIONS, ROLE_ACTIONS } from './responseTemplates'
 import { sanitizeText } from './responseUtils'
-import { enrichWithNavigation } from './smartNavigation'
+import { enrichWithNavigation, getNavigationGuidance } from './smartNavigation'
+import { selectErrorArticle, type ErrorArticle } from '../knowledge/errors'
 
 /**
  * Format a raw handler response string into a structured response.
@@ -34,8 +35,12 @@ export function formatResponse(
       ? existing.suggestedActions
       : getSuggestedActions(intent, role)
     const navActions = enrichWithNavigation(existing.sections, baseActions)
+    const navGuidance = getNavigationGuidance(
+      existing.sections.map((s) => ('content' in s ? String((s as { content?: string }).content ?? '') : '')).join(' ')
+    )
     return {
       ...existing,
+      sections: navGuidance.length > 0 ? [...existing.sections, ...navGuidance] : existing.sections,
       suggestedActions: baseActions.length > 0 ? [...baseActions, ...navActions] : navActions,
       intent,
       role,
@@ -47,9 +52,10 @@ export function formatResponse(
   const sections = buildSections(sanitized, intent, role)
   const baseActions = getSuggestedActions(intent, role)
   const navActions = enrichWithNavigation(sections, baseActions)
+  const navGuidance = getNavigationGuidance(sanitized)
 
   return {
-    sections,
+    sections: navGuidance.length > 0 ? [...sections, ...navGuidance] : sections,
     suggestedActions: baseActions.length > 0 ? [...baseActions, ...navActions] : navActions,
     intent,
     role,
@@ -152,20 +158,8 @@ export function formatError(
   _message: string,
   role: ChatbotRole
 ): StructuredResponse {
-  return {
-    sections: [
-      {
-        type: 'error',
-        message: 'Something went wrong. Please try again.',
-      },
-    ],
-    suggestedActions: [
-      { label: 'Try Again', value: 'retry' },
-      { label: 'Start New Chat', value: 'hello' },
-    ],
-    intent: 'UNSUPPORTED',
-    role,
-  }
+  const article = selectErrorArticle('generic')
+  return buildErrorResponse(article, role)
 }
 
 /**
@@ -175,6 +169,26 @@ export function formatEmptyState(
   variant: 'no_results' | 'cleared' | 'offline' | 'timeout' | 'unauthorized' | 'server_error' | 'no_permissions',
   role: ChatbotRole
 ): StructuredResponse {
+  const errorVariants = ['offline', 'timeout', 'unauthorized', 'server_error', 'no_permissions']
+  if (errorVariants.includes(variant)) {
+    const article = selectErrorArticle(variant)
+    const empty = article.emptyState!
+    return {
+      sections: [
+        {
+          type: 'empty_state',
+          variant: empty.variant,
+          title: empty.title,
+          description: empty.description,
+          action: empty.action,
+        },
+      ],
+      suggestedActions: article.actions,
+      intent: 'UNSUPPORTED',
+      role,
+    }
+  }
+
   const templates: Record<string, { title: string; description: string; action?: SuggestedAction }> = {
     no_results: {
       title: 'No listings found',
@@ -186,31 +200,9 @@ export function formatEmptyState(
       description: 'Start a new conversation with ValBot.',
       action: { label: 'Start Chat', value: 'hello' },
     },
-    offline: {
-      title: 'You are offline',
-      description: 'Check your internet connection and try again.',
-    },
-    timeout: {
-      title: 'Session timed out',
-      description: 'The conversation has been inactive for too long.',
-      action: { label: 'Start New Chat', value: 'hello' },
-    },
-    unauthorized: {
-      title: 'Sign in required',
-      description: 'Please sign in to access this feature.',
-    },
-    server_error: {
-      title: 'Something went wrong',
-      description: 'We encountered an issue. Please try again.',
-      action: { label: 'Try Again', value: 'retry' },
-    },
-    no_permissions: {
-      title: 'Access restricted',
-      description: 'You do not have permission to perform this action.',
-    },
   }
 
-  const template = templates[variant] ?? templates.server_error
+  const template = templates[variant] ?? templates.cleared
 
   return {
     sections: [
@@ -223,6 +215,15 @@ export function formatEmptyState(
       },
     ],
     suggestedActions: [],
+    intent: 'UNSUPPORTED',
+    role,
+  }
+}
+
+function buildErrorResponse(article: ErrorArticle, role: ChatbotRole): StructuredResponse {
+  return {
+    sections: article.response,
+    suggestedActions: article.actions,
     intent: 'UNSUPPORTED',
     role,
   }

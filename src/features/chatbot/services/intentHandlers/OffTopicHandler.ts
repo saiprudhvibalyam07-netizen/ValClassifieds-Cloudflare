@@ -1,24 +1,25 @@
 import type { IntentHandler, IntentClassification, ConversationContextState, ChatbotRole } from '../../types'
 import type { StructuredResponse } from '../../services/responseTypes'
-import { redirectMessage, pickNextActionIntro } from '../../services/responseQuality'
+import { selectOffTopicArticle } from '../../knowledge/offTopic'
 
 export class OffTopicHandler implements IntentHandler {
   async handle(
-    _classification: IntentClassification,
+    classification: IntentClassification,
     _context: ConversationContextState,
     role: ChatbotRole
   ): Promise<StructuredResponse> {
+    const article = selectOffTopicArticle(classification)
+
+    const sections: StructuredResponse['sections'] = [
+      { type: 'heading', content: article.title, level: 2 },
+    ]
+    for (const section of article.response) {
+      sections.push(section)
+    }
+
     return {
-      sections: [
-        { type: 'heading', content: 'Help with Your Marketplace Needs', level: 2 },
-        { type: 'text', content: redirectMessage() },
-        { type: 'text', content: pickNextActionIntro() },
-      ],
-      suggestedActions: [
-        { label: 'Search Listings', value: 'search' },
-        { label: 'How to Buy', value: 'how to buy' },
-        { label: 'How to Sell', value: 'how to sell' },
-      ],
+      sections,
+      suggestedActions: article.actions,
       intent: 'OFF_TOPIC',
       role,
     }
