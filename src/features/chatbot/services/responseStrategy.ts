@@ -62,6 +62,7 @@ export function resolveStrategy(input: StrategyInput): ResponseStrategy {
     case 'THANK_YOU':
     case 'SMALL_TALK':
     case 'LISTING_MANAGEMENT':
+    case 'NAVIGATION':
       return 'ANSWER'
     case 'SEARCH_LISTINGS':
       return 'SEARCH'

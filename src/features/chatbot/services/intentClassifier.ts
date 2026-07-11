@@ -7,6 +7,8 @@ interface IntentPattern {
   keywords: RegExp[]
   phrases: RegExp[]
   confidence: number
+  /** High-confidence keywords: a single match is enough to select this intent. */
+  strongKeywords?: RegExp[]
 }
 
 const INTENT_PATTERNS: IntentPattern[] = [
@@ -105,16 +107,19 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /publish\s+(a\s+)?listing/i,
       /list\s+my/i,
     ],
+    strongKeywords: [/sell/i, /post/i, /listing/i, /advertise/i],
     phrases: [
       /how\s+(do\s+i|can\s+i)\s+sell/i,
       /how\s+to\s+sell/i,
       /selling\s+(process|guide|help|on)/i,
       /post\s+(a\s+)?(listing|ad)/i,
+      /post\s+my\s+\w+/i,
       /create\s+(a\s+)?(listing|list|ad)/i,
       /how\s+to\s+post/i,
       /list\s+(my\s+)?(\w+\s+)?(item|phone|bike|car|product|something)/i,
       /sell\s+my/i,
       /sell\s+something/i,
+      /(?:i\s+)?want\s+to\s+sell/i,
       /add\s+(a\s+)?(listing|list|ad)/i,
       /add\s+listings?/i,
       /publish\s+(a\s+)?listing/i,
@@ -154,6 +159,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
   {
     intent: 'SAFETY',
     keywords: [/safe/i, /safety/i, /scam/i, /fraud/i, /secure/i, /trust/i],
+    strongKeywords: [/scam/i],
     phrases: [
       /is\s+it\s+safe/i,
       /safety\s+(tips?|guide|advice|concern)/i,
@@ -167,12 +173,16 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /upi\s+scam/i,
       /bank\s+transfer\s+risk/i,
       /fake\s+(seller|listing)/i,
+      /(?:got|been|was|am)\s+scammed/i,
+      /unsafe\s+payment/i,
+      /report\s+(?:the\s+|a\s+)?seller/i,
     ],
     confidence: 0.9,
   },
   {
     intent: 'CONTACT_SELLER',
     keywords: [/contact/i, /reach/i, /message/i, /call/i, /phone/i, /seller/i, /talk/i],
+    strongKeywords: [/seller/i],
     phrases: [
       /how\s+(do\s+i|can\s+i)\s+(contact|reach|message)/i,
       /contact\s+(the\s+)?seller/i,
@@ -180,6 +190,8 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /message\s+(the\s+)?seller/i,
       /phone\s+number/i,
       /seller\s+(contact|info|detail)/i,
+      /seller\s+(?:is\s+)?(?:not\s+replying|not\s+responding|hasn'?t\s+replied|won'?t\s+reply|not\s+answering)/i,
+      /(?:i\s+)?can'?t\s+(?:reach|contact)\s+(?:the\s+)?seller/i,
     ],
     confidence: 0.85,
   },
@@ -203,20 +215,25 @@ const INTENT_PATTERNS: IntentPattern[] = [
   {
     intent: 'ACCOUNT_HELP',
     keywords: [/account/i, /profile/i, /password/i, /login/i, /signup/i, /register/i, /sign\s*in/i],
+    strongKeywords: [/password/i, /log\s*in/i, /login/i, /sign\s*in/i, /sign\s*up/i, /profile/i],
     phrases: [
       /how\s+to\s+(create|make|set\s*up)\s+(an?\s+)?account/i,
       /forgot\s+(my\s+)?password/i,
-      /reset\s+password/i,
+      /(?:reset|change)\s+(?:my\s+|your\s+)?password/i,
+      /(?:can'?t|cannot|unable\s+to)\s*(?:log\s*in|sign\s*in|login)/i,
+      /how\s+(?:do\s+i|to|can\s+i)\s+(?:log\s*in|sign\s*in|login)/i,
       /login\s+(issue|problem|help)/i,
       /sign\s*(in|up)\s+(issue|problem|help)/i,
       /delete\s+(my\s+)?account/i,
       /edit\s+(my\s+)?profile/i,
+      /(?:my\s+)?account\s+(details|settings|info)/i,
     ],
     confidence: 0.85,
   },
   {
     intent: 'LISTING_MANAGEMENT',
     keywords: [/my\s+listing/i, /my\s+ad/i, /my\s+item/i, /edit/i, /delete\s+listing/i, /remove\s+listing/i, /update\s+listing/i],
+    strongKeywords: [/listing/i, /my\s+listing/i],
     phrases: [
       /how\s+(do\s+i|can\s+i)\s+(edit|update|change|delete|remove)\s+(my\s+)?listing/i,
       /my\s+listings?/i,
@@ -225,6 +242,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /where\s+(are|can\s+i\s+find)\s+my\s+listings/i,
       /delete\s+(my\s+)?(listing|ad|item)/i,
       /edit\s+(my\s+)?(listing|ad|item)/i,
+      /upload\s+(?:my\s+)?(?:photos?|pictures?|images?)/i,
     ],
     confidence: 0.85,
   },
@@ -299,6 +317,21 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /tell\s+me\s+(a\s+)?(joke|story|poem|riddle)/i,
     ],
     confidence: 0.9,
+  },
+  {
+    intent: 'NAVIGATION',
+    keywords: [/messages?/i, /favorites?/i, /profile/i, /inbox/i, /saved/i],
+    strongKeywords: [/messages?/i, /favorites?/i],
+    phrases: [
+      /^(?:my\s+)?messages?$/i,
+      /^(?:my\s+)?favorites?$/i,
+      /^(?:my\s+)?profile$/i,
+      /open\s+(?:my\s+)?messages?/i,
+      /view\s+(?:my\s+)?favorites?/i,
+      /go\s+to\s+(?:my\s+)?profile/i,
+      /show\s+(?:my\s+)?(?:messages?|favorites?|saved\s+items?)/i,
+    ],
+    confidence: 0.85,
   },
   {
     intent: 'ADMIN_ACTION',
@@ -563,7 +596,15 @@ export function classifyIntent(message: string): IntentClassification {
   // route straight to SEARCH_LISTINGS so terms like "car", "bike", "iphone",
   // "laptop" and "house" surface listings instead of a generic help response.
   const searchMissing = getMissingInformation('SEARCH_LISTINGS', entities)
-  if (category && PRODUCT_CATEGORY_SLUGS.has(category) && trimmed.split(/\s+/).length <= 3) {
+  // Skip the direct-search shortcut when the message is clearly a selling
+  // action (e.g. "post my bike", "sell my phone") so it routes to SELLING_HELP.
+  const isSellingAction = /\b(?:sell|post|list|advertise|create\s+(?:a\s+)?listing|publish\s+(?:a\s+)?listing)\b/i.test(trimmed)
+  if (
+    category &&
+    PRODUCT_CATEGORY_SLUGS.has(category) &&
+    trimmed.split(/\s+/).length <= 3 &&
+    !isSellingAction
+  ) {
     return {
       intent: 'SEARCH_LISTINGS',
       confidence: 0.9,
@@ -609,13 +650,21 @@ export function classifyIntent(message: string): IntentClassification {
 
   for (const pattern of INTENT_PATTERNS) {
     let keywordCount = 0
+    let weight = 0
     for (const keyword of pattern.keywords) {
       if (keyword.test(trimmed)) {
         keywordCount++
+        weight = Math.max(weight, 0.4)
+      }
+    }
+    for (const keyword of pattern.strongKeywords ?? []) {
+      if (keyword.test(trimmed)) {
+        keywordCount++
+        weight = Math.max(weight, 1.0)
       }
     }
     if (keywordCount > 0) {
-      const score = pattern.confidence * keywordCount * 0.4
+      const score = Math.min(1, pattern.confidence * weight * Math.min(keywordCount, 2))
       if (score > bestKeywordScore) {
         bestKeywordScore = score
         bestKeywordMatch = pattern
@@ -637,6 +686,29 @@ export function classifyIntent(message: string): IntentClassification {
   }
 
   entities = extractEntities(trimmed)
+
+  // ── Search-intent fallback ────────────────────────────────────────────────
+  // Natural, noun-style searches ("job", "Honda City", "Swift", "Bike under 1
+  // lakh") often carry a clear search signal without a verb/phrase match. If a
+  // category or brand is present, or the residual query is a short noun phrase
+  // free of conversational/account commands, treat it as a listing search.
+  const NON_SEARCH_PHRASES =
+    /\b(?:how\s+(?:do\s+i|can\s+i|to)|what\s+is|what\s+are|why|when|who|where|can\s+you|could\s+you|would\s+you|tell\s+me|give\s+me|help\s+me|please|reset|change|update|edit|delete|login|log\s+in|sign\s+(?:up|in)|account|password|refund|cancel|book|schedule|meeting|appointment|story|joke|weather|news)\b/i
+  const residual = entities.query
+  const looksLikeSearchNoun =
+    !!residual &&
+    !NON_SEARCH_PHRASES.test(trimmed) &&
+    residual.trim().split(/\s+/).filter(Boolean).length <= 3
+  if (entities.category || entities.brand || looksLikeSearchNoun) {
+    const missing = getMissingInformation('SEARCH_LISTINGS', entities)
+    return {
+      intent: 'SEARCH_LISTINGS',
+      confidence: 0.8,
+      entities,
+      missingInformation: missing,
+      requiresClarification: missing.length > 0,
+    }
+  }
 
   return {
     intent: 'UNKNOWN',

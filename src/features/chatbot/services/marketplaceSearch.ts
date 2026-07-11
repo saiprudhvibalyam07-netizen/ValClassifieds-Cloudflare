@@ -1,6 +1,11 @@
 import { supabase } from '../../../lib/supabase'
 import type { Listing, Category, Profile, ListingImage } from '../../../types'
 import { logger } from './logger'
+import { mapToLiveCategories, isPureCategoryQuery } from './liveCategoryMapping'
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -85,6 +90,22 @@ export async function searchListings(
   const safeLimit = Math.min(Math.max(1, limit), MAX_LIMIT)
   const offset = (Math.max(1, page) - 1) * safeLimit
 
+  // Translate the classifier's rich category concepts to the live DB taxonomy.
+  const liveCategories = mapToLiveCategories(categories)
+
+  // Determine the "pure category" decision against a query with location and
+  // currency words removed, so e.g. "House in Hyderabad" or "Bike under 1 lakh"
+  // still resolve by category rather than a literal title text search.
+  const pureDetectionQuery = location
+    ? query?.replace(new RegExp(`\\b${escapeRegex(location)}\\b`, 'gi'), ' ').trim() || undefined
+    : query
+  const isPureCategory = isPureCategoryQuery(pureDetectionQuery)
+
+  // Pure category searches (e.g. "car", "phone") are resolved by category
+  // filter only — never by a `title ILIKE '%car%'` text search, since listing
+  // titles usually don't repeat the bare category noun.
+  const textQuery = isPureCategory ? undefined : query
+
   let dbQuery = supabase
     .from('listings')
     .select(`
@@ -96,11 +117,11 @@ export async function searchListings(
     .eq('status', status)
 
   // Apply filters
-  if (categories && categories.length > 0) {
+  if (liveCategories && liveCategories.length > 0) {
     const { data: catIds } = await supabase
       .from('categories')
       .select('id')
-      .in('slug', categories)
+      .in('slug', liveCategories)
     if (catIds && catIds.length > 0) {
       dbQuery = dbQuery.in('category_id', catIds.map(c => c.id))
     }
@@ -122,9 +143,10 @@ export async function searchListings(
     dbQuery = dbQuery.eq('user_id', sellerId)
   }
 
-  // Text search across multiple fields
-  if (query && query.trim()) {
-    const q = `%${query.trim()}%`
+  // Text search across multiple fields (only for brand/model/specific keywords;
+  // pure category searches skip this and rely on the category filter above).
+  if (textQuery && textQuery.trim()) {
+    const q = `%${textQuery.trim()}%`
     dbQuery = dbQuery.or(
       `title.ilike.${q},description.ilike.${q},location.ilike.${q},address.ilike.${q},city.ilike.${q},state.ilike.${q}`
     )

@@ -124,6 +124,11 @@ export const INTENT_ACTIONS: Partial<Record<Intent, SuggestedAction[]>> = {
     { label: 'Search Listings', value: 'search' },
     { label: 'Browse Categories', value: 'show categories' },
   ],
+  NAVIGATION: [
+    { label: 'Open Messages', value: 'open messages' },
+    { label: 'View Favorites', value: 'view favorites' },
+    { label: 'My Profile', value: 'profile' },
+  ],
   ADMIN_ACTION: ADMIN_ACTIONS,
   OFFENSIVE: [],
   UNSUPPORTED: [
@@ -200,51 +205,6 @@ export const SAFETY_TEMPLATES: Record<string, SafetyTemplate> = {
       'Communicate through the platform',
       'Never share personal financial details',
     ],
-  },
-}
-
-// ─── Empty State Templates ─────────────────────────────────────────────────────
-
-export interface EmptyStateTemplate {
-  title: string
-  description: string
-  action?: SuggestedAction
-}
-
-export const EMPTY_STATE_TEMPLATES: Record<string, EmptyStateTemplate> = {
-  no_results: {
-    title: 'No listings found',
-    description: 'Try adjusting your search filters or browse different categories.',
-    action: { label: 'Browse Categories', value: 'show categories' },
-  },
-  cleared: {
-    title: 'Conversation cleared',
-    description: 'Start a new conversation with ValBot.',
-    action: { label: 'Start Chat', value: 'hello' },
-  },
-  offline: {
-    title: 'You are offline',
-    description: 'Check your internet connection and try again.',
-    action: { label: 'Retry', value: 'retry' },
-  },
-  timeout: {
-    title: 'Session timed out',
-    description: 'The conversation has been inactive for too long.',
-    action: { label: 'Start New Chat', value: 'hello' },
-  },
-  unauthorized: {
-    title: 'Sign in required',
-    description: 'Please sign in to access this feature.',
-    action: { label: 'Sign In', value: 'sign in' },
-  },
-  server_error: {
-    title: 'Something went wrong',
-    description: 'We encountered an issue. Please try again.',
-    action: { label: 'Try Again', value: 'retry' },
-  },
-  no_permissions: {
-    title: 'Access restricted',
-    description: 'You do not have permission to perform this action.',
   },
 }
 

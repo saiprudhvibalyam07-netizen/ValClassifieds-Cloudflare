@@ -20,6 +20,7 @@ import { UnsupportedHandler } from './UnsupportedHandler'
 import { SmallTalkHandler } from './SmallTalkHandler'
 import { AdminHandler } from './AdminHandler'
 import { ListingAdvisorHandler } from './ListingAdvisorHandler'
+import { NavigationHandler } from './NavigationHandler'
 
 const handlers: Record<Intent, IntentHandler> = {
   GREETING: new GreetingHandler(),
@@ -41,6 +42,7 @@ const handlers: Record<Intent, IntentHandler> = {
   RECOMMENDATION: new RecommendationHandler(),
   SMALL_TALK: new SmallTalkHandler(),
   OFF_TOPIC: new OffTopicHandler(),
+  NAVIGATION: new NavigationHandler(),
   ADMIN_ACTION: new AdminHandler(),
   OFFENSIVE: new UnsupportedHandler(),
   UNSUPPORTED: new UnsupportedHandler(),

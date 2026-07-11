@@ -224,33 +224,6 @@ export function createStepsResponse(
 }
 
 /**
- * Create an empty state response.
- */
-export function createEmptyStateResponse(
-  variant: 'no_results' | 'cleared' | 'offline' | 'timeout' | 'unauthorized' | 'server_error' | 'no_permissions',
-  intent: Intent,
-  role: ChatbotRole,
-  suggestedActions?: SuggestedAction[]
-): StructuredResponse {
-  const templates: Record<string, { title: string; description: string; action?: SuggestedAction }> = {
-    no_results: { title: 'No listings found', description: 'Try adjusting your search filters or browse different categories.', action: { label: 'Browse Categories', value: 'show categories' } },
-    cleared: { title: 'Conversation cleared', description: 'Start a new conversation with ValBot.', action: { label: 'Start Chat', value: 'hello' } },
-    offline: { title: 'You are offline', description: 'Check your internet connection and try again.' },
-    timeout: { title: 'Session timed out', description: 'The conversation has been inactive for too long.', action: { label: 'Start New Chat', value: 'hello' } },
-    unauthorized: { title: 'Sign in required', description: 'Please sign in to access this feature.' },
-    server_error: { title: 'Something went wrong', description: 'We encountered an issue. Please try again.', action: { label: 'Try Again', value: 'retry' } },
-    no_permissions: { title: 'Access restricted', description: 'You do not have permission to perform this action.' },
-  }
-  const t = templates[variant] ?? templates.server_error
-  return createStructuredResponse(
-    [{ type: 'empty_state', variant, title: t.title, description: t.description, action: t.action }],
-    intent,
-    role,
-    suggestedActions
-  )
-}
-
-/**
  * Create a safety banner response.
  */
 export function createSafetyResponse(

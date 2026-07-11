@@ -449,6 +449,7 @@ export type Intent =
   | 'ADMIN_ACTION'
   | 'OFFENSIVE'
   | 'UNSUPPORTED'
+  | 'NAVIGATION'
   | 'UNKNOWN'
 
 export interface MarketplaceEntities {

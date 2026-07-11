@@ -7,7 +7,6 @@ import {
   ROLE_ACTIONS,
   INTENT_ACTIONS,
   SAFETY_TEMPLATES,
-  EMPTY_STATE_TEMPLATES,
   getSectionsForIntent,
 } from '../responseTemplates'
 
@@ -79,17 +78,6 @@ describe('responseTemplates', () => {
     it('has general template', () => {
       expect(SAFETY_TEMPLATES.general).toBeDefined()
       expect(SAFETY_TEMPLATES.general.variant).toBe('general_safety')
-    })
-  })
-
-  describe('EMPTY_STATE_TEMPLATES', () => {
-    it('has all empty state variants', () => {
-      const variants = ['no_results', 'cleared', 'offline', 'timeout', 'unauthorized', 'server_error', 'no_permissions']
-      for (const variant of variants) {
-        expect(EMPTY_STATE_TEMPLATES[variant]).toBeDefined()
-        expect(EMPTY_STATE_TEMPLATES[variant].title).toBeDefined()
-        expect(EMPTY_STATE_TEMPLATES[variant].description).toBeDefined()
-      }
     })
   })
 
