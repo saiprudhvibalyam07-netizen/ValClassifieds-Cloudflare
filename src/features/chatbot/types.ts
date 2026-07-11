@@ -428,6 +428,8 @@ export class FlagEvaluationError extends Error {
 
 export type Intent =
   | 'GREETING'
+  | 'FAREWELL'
+  | 'THANK_YOU'
   | 'SEARCH_LISTINGS'
   | 'BROWSE_CATEGORIES'
   | 'LISTING_DETAILS'
@@ -439,9 +441,11 @@ export type Intent =
   | 'CONTACT_SELLER'
   | 'PLATFORM_HELP'
   | 'ACCOUNT_HELP'
+  | 'LISTING_MANAGEMENT'
   | 'COMPARISON'
   | 'RECOMMENDATION'
   | 'SMALL_TALK'
+  | 'OFF_TOPIC'
   | 'ADMIN_ACTION'
   | 'OFFENSIVE'
   | 'UNSUPPORTED'
@@ -483,6 +487,8 @@ export interface ConversationContextState {
   searchFilters: SearchFilters | null
   clarificationCount: number
   lastResponse: string | null
+  askedFields: string[]
+  lastAcknowledgment: string | null
 }
 
 export type ConversationStage =
@@ -496,6 +502,7 @@ export type ConversationStage =
 export type ResponseStrategy =
   | 'ANSWER'
   | 'CLARIFY'
+  | 'VERIFY'
   | 'REDIRECT'
   | 'SEARCH'
   | 'HANDOFF'

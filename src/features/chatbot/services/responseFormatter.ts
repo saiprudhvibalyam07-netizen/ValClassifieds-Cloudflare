@@ -6,6 +6,7 @@ import type {
 } from './responseTypes'
 import { getSectionsForIntent, INTENT_ACTIONS, ROLE_ACTIONS } from './responseTemplates'
 import { sanitizeText } from './responseUtils'
+import { enrichWithNavigation } from './smartNavigation'
 
 /**
  * Format a raw handler response string into a structured response.
@@ -26,15 +27,16 @@ export function formatResponse(
   intent: Intent,
   role: ChatbotRole
 ): StructuredResponse {
-  // If already structured, enrich with suggested actions
+  // If already structured, enrich with suggested actions + smart navigation
   if (rawContent && typeof rawContent === 'object' && 'sections' in rawContent) {
     const existing = rawContent as StructuredResponse
-    const suggestedActions = existing.suggestedActions?.length
+    const baseActions = existing.suggestedActions?.length
       ? existing.suggestedActions
       : getSuggestedActions(intent, role)
+    const navActions = enrichWithNavigation(existing.sections, baseActions)
     return {
       ...existing,
-      suggestedActions,
+      suggestedActions: baseActions.length > 0 ? [...baseActions, ...navActions] : navActions,
       intent,
       role,
     }
@@ -43,11 +45,12 @@ export function formatResponse(
   const sanitized = sanitizeText(rawContent as string)
 
   const sections = buildSections(sanitized, intent, role)
-  const suggestedActions = getSuggestedActions(intent, role)
+  const baseActions = getSuggestedActions(intent, role)
+  const navActions = enrichWithNavigation(sections, baseActions)
 
   return {
     sections,
-    suggestedActions,
+    suggestedActions: baseActions.length > 0 ? [...baseActions, ...navActions] : navActions,
     intent,
     role,
   }

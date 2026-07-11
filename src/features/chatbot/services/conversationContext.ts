@@ -15,10 +15,14 @@ const initialContext: ConversationContextState = {
   searchFilters: null,
   clarificationCount: 0,
   lastResponse: null,
+  askedFields: [],
+  lastAcknowledgment: null,
 }
 
 const STAGE_TRANSITIONS: Record<string, ConversationStage> = {
   GREETING: 'greeting',
+  FAREWELL: 'greeting',
+  THANK_YOU: 'exploring',
   SEARCH_LISTINGS: 'searching',
   BROWSE_CATEGORIES: 'exploring',
   LISTING_DETAILS: 'evaluating',
@@ -30,9 +34,11 @@ const STAGE_TRANSITIONS: Record<string, ConversationStage> = {
   CONTACT_SELLER: 'transacting',
   PLATFORM_HELP: 'support',
   ACCOUNT_HELP: 'support',
+  LISTING_MANAGEMENT: 'support',
   COMPARISON: 'evaluating',
   RECOMMENDATION: 'searching',
   SMALL_TALK: 'exploring',
+  OFF_TOPIC: 'support',
   ADMIN_ACTION: 'support',
   OFFENSIVE: 'support',
   UNSUPPORTED: 'support',
@@ -66,6 +72,15 @@ class ConversationContextManager {
       ...entities,
     }
 
+    // Filter out fields that the user has now answered
+    const remainingAsked = target.askedFields.filter(f => {
+      if (f === 'category') return !mergedEntities.category && !mergedEntities.query
+      if (f === 'budget') return !mergedEntities.budget
+      if (f === 'location') return !mergedEntities.location
+      if (f === 'listing') return !mergedEntities.listingId && !mergedEntities.query
+      return true
+    })
+
     const updated: ConversationContextState = {
       ...target,
       lastIntent: intent,
@@ -75,6 +90,7 @@ class ConversationContextManager {
       currentListing: entities.listingId ?? target.currentListing,
       searchFilters: this.buildFilters(mergedEntities),
       clarificationCount: 0,
+      askedFields: remainingAsked,
     }
 
     if (conversationId) {
@@ -101,6 +117,24 @@ class ConversationContextManager {
       : this.context
     if (target) {
       target.lastResponse = response
+    }
+  }
+
+  setAskedField(field: string, conversationId?: string): void {
+    const target = conversationId
+      ? this.contextsByConversation.get(conversationId)
+      : this.context
+    if (target && !target.askedFields.includes(field)) {
+      target.askedFields.push(field)
+    }
+  }
+
+  setLastAcknowledgment(ack: string, conversationId?: string): void {
+    const target = conversationId
+      ? this.contextsByConversation.get(conversationId)
+      : this.context
+    if (target) {
+      target.lastAcknowledgment = ack
     }
   }
 
@@ -134,6 +168,8 @@ class ConversationContextManager {
         return 'Compare items'
       case 'RECOMMENDATION':
         return 'Get recommendations'
+      case 'LISTING_MANAGEMENT':
+        return 'Manage listings'
       default:
         return null
     }

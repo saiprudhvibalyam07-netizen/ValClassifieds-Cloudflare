@@ -1,8 +1,13 @@
 import type { ChatbotRole, MockResponse, StructuredResponse } from '../types'
 import type { ConversationProvider, SendMessageOptions } from './provider'
-import { ROLE_GREETINGS, STARTER_PROMPTS } from '../constants'
+import { STARTER_PROMPTS } from '../constants'
 import { CHATBOT_CONFIG } from '../config'
 import { runConversationPipeline } from './conversationPipeline'
+import { selectGreetingArticle } from '../knowledge/greetings'
+
+function greetingTextForRole(role: ChatbotRole): string {
+  return selectGreetingArticle(role).responses[0]?.content ?? ''
+}
 
 function randomDelay(): number {
   const { min, max } = CHATBOT_CONFIG.typingDelay
@@ -18,13 +23,13 @@ async function buildPipelineResponse(
     const result = await runConversationPipeline(content, role, conversationId)
     return { content: result.response, structuredResponse: result.structuredResponse }
   } catch {
-    return { content: ROLE_GREETINGS[role] ?? ROLE_GREETINGS.visitor }
+    return { content: greetingTextForRole(role) }
   }
 }
 
 export const mockConversationProvider: ConversationProvider = {
   getRoleResponse(role: ChatbotRole): string {
-    return ROLE_GREETINGS[role] ?? ROLE_GREETINGS.visitor
+    return greetingTextForRole(role)
   },
 
   async sendMessage(content: string, role: ChatbotRole, options?: SendMessageOptions): Promise<MockResponse> {

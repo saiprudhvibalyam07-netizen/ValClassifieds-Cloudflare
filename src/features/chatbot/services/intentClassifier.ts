@@ -1,5 +1,6 @@
 import type { Intent, IntentClassification, MarketplaceEntities } from '../types'
 import { matchCategory } from './canonicalCategories'
+import { getCategoryFlow } from './categoryFlows'
 
 interface IntentPattern {
   intent: Intent
@@ -17,6 +18,25 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /^(what'?s?\s*up|how\s*are\s*you|how\s*doing)/i,
     ],
     confidence: 0.95,
+  },
+  {
+    intent: 'FAREWELL',
+    keywords: [/bye/i, /goodbye/i, /see\s*you/i, /farewell/i, /later/i],
+    phrases: [
+      /^(bye|goodbye|see\s+you|take\s+care|farewell|gotta\s+go|i'm?\s*(out|leaving|done))\s*[!.?]*$/i,
+      /^(see\s+you\s+(later|soon|around))/i,
+      /^(have\s+a\s+(good|great|nice)\s+(day|one))/i,
+    ],
+    confidence: 0.9,
+  },
+  {
+    intent: 'THANK_YOU',
+    keywords: [/thanks/i, /thank/i, /appreciate/i, /grateful/i],
+    phrases: [
+      /^(thanks|thank\s+you|thank\s+you\s+so\s+much|thanks\s+a\s+lot|much\s+appreciated|appreciate\s+(it|that|the\s+help))\s*[!.?]*$/i,
+      /^(that'?s?\s+(helpful|great|perfect|what\s+i\s+needed))/i,
+    ],
+    confidence: 0.9,
   },
   {
     intent: 'SEARCH_LISTINGS',
@@ -78,16 +98,28 @@ const INTENT_PATTERNS: IntentPattern[] = [
   },
   {
     intent: 'SELLING_HELP',
-    keywords: [/sell/i, /seller/i, /post/i, /listing/i, /advertise/i],
+    keywords: [
+      /sell/i, /seller/i, /post/i, /listing/i, /advertise/i,
+      /add\s+(a\s+)?(listing|list|ad)/i,
+      /create\s+(a\s+)?(listing|ad)/i,
+      /publish\s+(a\s+)?listing/i,
+      /list\s+my/i,
+    ],
     phrases: [
       /how\s+(do\s+i|can\s+i)\s+sell/i,
       /how\s+to\s+sell/i,
       /selling\s+(process|guide|help|on)/i,
-      /post\s+(a\s+)?listing/i,
-      /create\s+(a\s+)?listing/i,
+      /post\s+(a\s+)?(listing|ad)/i,
+      /create\s+(a\s+)?(listing|list|ad)/i,
       /how\s+to\s+post/i,
-      /list\s+(an?\s+)?item/i,
+      /list\s+(my\s+)?(\w+\s+)?(item|phone|bike|car|product|something)/i,
       /sell\s+my/i,
+      /sell\s+something/i,
+      /add\s+(a\s+)?(listing|list|ad)/i,
+      /add\s+listings?/i,
+      /publish\s+(a\s+)?listing/i,
+      /create\s+ads?/i,
+      /where\s+(do|can)\s+i\s+(add|post|list|create)\s+my/i,
     ],
     confidence: 0.85,
   },
@@ -183,6 +215,20 @@ const INTENT_PATTERNS: IntentPattern[] = [
     confidence: 0.85,
   },
   {
+    intent: 'LISTING_MANAGEMENT',
+    keywords: [/my\s+listing/i, /my\s+ad/i, /my\s+item/i, /edit/i, /delete\s+listing/i, /remove\s+listing/i, /update\s+listing/i],
+    phrases: [
+      /how\s+(do\s+i|can\s+i)\s+(edit|update|change|delete|remove)\s+(my\s+)?listing/i,
+      /my\s+listings?/i,
+      /view\s+(my\s+)?listings?/i,
+      /manage\s+(my\s+)?listings?/i,
+      /where\s+(are|can\s+i\s+find)\s+my\s+listings/i,
+      /delete\s+(my\s+)?(listing|ad|item)/i,
+      /edit\s+(my\s+)?(listing|ad|item)/i,
+    ],
+    confidence: 0.85,
+  },
+  {
     intent: 'COMPARISON',
     keywords: [/compare/i, /vs/i, /versus/i, /difference/i, /better/i, /best/i],
     phrases: [
@@ -221,11 +267,38 @@ const INTENT_PATTERNS: IntentPattern[] = [
     intent: 'SMALL_TALK',
     keywords: [],
     phrases: [
-      /^(bye|goodbye|see\s+you|take\s+care|thanks|thank\s+you|thx|ty|ok|okay|sure|cool|nice|great|awesome)\s*[!.?]*$/i,
-      /^(how'?s?\s+it\s+going|what'?s?\s+new|how'?s?\s+life)/i,
-      /^(lol|haha|hehe|rofl|lmao)/i,
+      /^(ok|okay|sure|cool|nice|great|awesome|alright|fine)\s*[!.?]*$/i,
+      /^(how'?s?\s+it\s+going|what'?s?\s+new|how'?s?\s+life|how'?s?\s+everything)/i,
+      /^(lol|haha|hehe|rofl|lmao|funny)/i,
+      /^(that'?s?\s+(good|great|nice|awesome|cool))/i,
+      /^(i'?m?\s+(good|fine|great|ok|doing\s+well))/i,
     ],
     confidence: 0.7,
+  },
+  {
+    intent: 'OFF_TOPIC',
+    keywords: [
+      /python|javascript|java|c\+\+|coding|programming|code/i,
+      /cricket|football|soccer|tennis|ipl|premier\s+league/i,
+      /movie|film|song|music|celebrity|actor|actress/i,
+      /politics|election|government|party|minister/i,
+      /homework|assignment|exam|test|study|school|college/i,
+      /weather|temperature|forecast/i,
+      /recipe|cooking|food|diet/i,
+      /news|current\s+affairs/i,
+      /stock|investment|crypto|bitcoin|share\s+market/i,
+      /history|geography|science|math|physics|chemistry|biology/i,
+    ],
+    phrases: [
+      /who\s+(won|lost|is|are)\s+(the\s+)?(cricket|football|match|game|election)/i,
+      /write\s+(a\s+)?(python|javascript|code|program|function)/i,
+      /what\s+is\s+the\s+(capital|population|area|currency|president)/i,
+      /how\s+(do\s+i|to)\s+(cook|bake|prepare|make\s+food)/i,
+      /what\s+is\s+the\s+(meaning|definition|formula|theory)/i,
+      /(cricket|football)\s+(score|match|result|team|player)/i,
+      /tell\s+me\s+(a\s+)?(joke|story|poem|riddle)/i,
+    ],
+    confidence: 0.9,
   },
   {
     intent: 'ADMIN_ACTION',
@@ -398,20 +471,35 @@ function extractEntities(text: string): MarketplaceEntities {
   if (query) entities.query = query
 
   if (/\b(buy|buying|purchase|want\s+to\s+buy)\b/i.test(text)) entities.buyerIntent = true
-  if (/\b(sell|selling|sell\s+my|list\s+my)\b/i.test(text)) entities.sellerIntent = true
+  if (/\b(sell|selling|sell\s+my|list\s+my|add\s+(a\s+)?listing|post\s+(a\s+)?ad|create\s+(a\s+)?listing)\b/i.test(text)) entities.sellerIntent = true
 
   return entities
+}
+
+function entityHasValue(entities: MarketplaceEntities, key: keyof MarketplaceEntities): boolean {
+  const val = entities[key]
+  if (val === undefined || val === null) return false
+  if (typeof val === 'string' && val.trim() === '') return false
+  if (typeof val === 'object' && !Array.isArray(val)) {
+    const obj = val as Record<string, unknown>
+    return Object.keys(obj).length > 0
+  }
+  return true
 }
 
 function getMissingInformation(intent: Intent, entities: MarketplaceEntities): string[] {
   const missing: string[] = []
 
   switch (intent) {
-    case 'SEARCH_LISTINGS':
-      if (!entities.category && !entities.query) missing.push('category')
-      if (!entities.budget) missing.push('budget')
-      if (!entities.location) missing.push('location')
+    case 'SEARCH_LISTINGS': {
+      const flow = getCategoryFlow(entities.category)
+      for (const field of flow.fields) {
+        if (!entityHasValue(entities, field.entityKey)) {
+          missing.push(field.key)
+        }
+      }
       break
+    }
     case 'LISTING_DETAILS':
       if (!entities.listingId && !entities.query) missing.push('listing')
       break
@@ -427,10 +515,15 @@ function getMissingInformation(intent: Intent, entities: MarketplaceEntities): s
     case 'RECOMMENDATION':
       if (!entities.category && !entities.query) missing.push('what you need')
       break
+    case 'LISTING_MANAGEMENT':
+      if (!entities.listingId && !entities.query) missing.push('listing')
+      break
   }
 
   return missing
 }
+
+export { getMissingInformation }
 
 export function classifyIntent(message: string): IntentClassification {
   const trimmed = message.trim()
@@ -469,13 +562,14 @@ export function classifyIntent(message: string): IntentClassification {
   // detected AND the query is a short, direct category search (≤3 words),
   // route straight to SEARCH_LISTINGS so terms like "car", "bike", "iphone",
   // "laptop" and "house" surface listings instead of a generic help response.
+  const searchMissing = getMissingInformation('SEARCH_LISTINGS', entities)
   if (category && PRODUCT_CATEGORY_SLUGS.has(category) && trimmed.split(/\s+/).length <= 3) {
     return {
       intent: 'SEARCH_LISTINGS',
       confidence: 0.9,
       entities,
-      missingInformation: getMissingInformation('SEARCH_LISTINGS', entities),
-      requiresClarification: getMissingInformation('SEARCH_LISTINGS', entities).length > 0,
+      missingInformation: searchMissing,
+      requiresClarification: searchMissing.length > 0,
     }
   }
 
@@ -500,12 +594,13 @@ export function classifyIntent(message: string): IntentClassification {
   
   if (bestPhraseMatch && bestPhraseScore > 0.5) {
     const missing = getMissingInformation(bestPhraseMatch.intent, entities)
+    const clarifyIntents = new Set(['SEARCH_LISTINGS', 'LISTING_MANAGEMENT'])
     return {
       intent: bestPhraseMatch.intent,
       confidence: bestPhraseScore,
       entities,
       missingInformation: missing,
-      requiresClarification: missing.length > 0 && bestPhraseMatch.intent === 'SEARCH_LISTINGS',
+      requiresClarification: missing.length > 0 && clarifyIntents.has(bestPhraseMatch.intent),
     }
   }
 
@@ -531,12 +626,13 @@ export function classifyIntent(message: string): IntentClassification {
   if (bestKeywordMatch && bestKeywordScore > 0.5) {
     entities = extractEntities(trimmed)
     const missing = getMissingInformation(bestKeywordMatch.intent, entities)
+    const clarifyIntents = new Set(['SEARCH_LISTINGS', 'LISTING_MANAGEMENT'])
     return {
       intent: bestKeywordMatch.intent,
       confidence: Math.min(bestKeywordMatch.confidence * 0.7, 1),
       entities,
       missingInformation: missing,
-      requiresClarification: missing.length > 0 && bestKeywordMatch.intent === 'SEARCH_LISTINGS',
+      requiresClarification: missing.length > 0 && clarifyIntents.has(bestKeywordMatch.intent),
     }
   }
 

@@ -41,10 +41,16 @@ describe('followUpEngine', () => {
       expect(shouldContinueClarifying(classification, context)).toBe(true)
     })
 
-    it('returns false when clarification count >= 2', () => {
+    it('returns false when clarification count >= 3', () => {
+      const classification = makeClassification({ requiresClarification: true, missingInformation: ['budget'] })
+      const context = makeContext({ clarificationCount: 3 })
+      expect(shouldContinueClarifying(classification, context)).toBe(false)
+    })
+
+    it('returns true when clarification count is 2 (max increased to 3)', () => {
       const classification = makeClassification({ requiresClarification: true, missingInformation: ['budget'] })
       const context = makeContext({ clarificationCount: 2 })
-      expect(shouldContinueClarifying(classification, context)).toBe(false)
+      expect(shouldContinueClarifying(classification, context)).toBe(true)
     })
 
     it('returns false when clarification not required', () => {
@@ -70,7 +76,7 @@ describe('followUpEngine', () => {
     it('mentions budget when present', () => {
       const classification = makeClassification({ entities: { budget: { max: 20000 } } })
       const msg = getAssumptionMessage(classification)
-      expect(msg).toContain('20000')
+      expect(msg).toContain('20,000')
     })
 
     it('mentions location when present', () => {
@@ -103,7 +109,7 @@ describe('followUpEngine', () => {
       })
       const msg = getAssumptionMessage(classification)
       expect(msg).toContain('phones')
-      expect(msg).toContain('20000')
+      expect(msg).toContain('20,000')
       expect(msg).toContain('Delhi')
     })
 
@@ -112,8 +118,8 @@ describe('followUpEngine', () => {
         entities: { budget: { min: 10000, max: 20000 } },
       })
       const msg = getAssumptionMessage(classification)
-      expect(msg).toContain('10000')
-      expect(msg).toContain('20000')
+      expect(msg).toContain('10,000')
+      expect(msg).toContain('20,000')
     })
   })
 })

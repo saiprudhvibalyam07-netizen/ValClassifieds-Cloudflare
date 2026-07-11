@@ -2,7 +2,7 @@ import type { IntentHandler, IntentClassification, ConversationContextState, Cha
 import type { StructuredResponse } from '../../services/responseTypes'
 import { redirectMessage, pickNextActionIntro } from '../../services/responseQuality'
 
-export class UnsupportedHandler implements IntentHandler {
+export class OffTopicHandler implements IntentHandler {
   async handle(
     _classification: IntentClassification,
     _context: ConversationContextState,
@@ -10,16 +10,16 @@ export class UnsupportedHandler implements IntentHandler {
   ): Promise<StructuredResponse> {
     return {
       sections: [
-        { type: 'heading', content: 'Find What You Need', level: 2 },
+        { type: 'heading', content: 'Help with Your Marketplace Needs', level: 2 },
         { type: 'text', content: redirectMessage() },
         { type: 'text', content: pickNextActionIntro() },
       ],
       suggestedActions: [
-        { label: 'Browse Categories', value: 'show categories' },
         { label: 'Search Listings', value: 'search' },
-        { label: 'Contact Support', value: 'contact support' },
+        { label: 'How to Buy', value: 'how to buy' },
+        { label: 'How to Sell', value: 'how to sell' },
       ],
-      intent: 'UNSUPPORTED',
+      intent: 'OFF_TOPIC',
       role,
     }
   }

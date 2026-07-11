@@ -1,7 +1,7 @@
 import type { IntentHandler, IntentClassification, ConversationContextState, ChatbotRole } from '../../types'
 import type { StructuredResponse, ListingData } from '../../services/responseTypes'
-import { getSupportTopic } from '../../services/supportContent'
 import { searchListings } from '../../services/marketplaceSearch'
+import { pickAcknowledgement, pickGuidancePhrase } from '../../services/responseQuality'
 
 export class PricingHandler implements IntentHandler {
   async handle(
@@ -15,56 +15,32 @@ export class PricingHandler implements IntentHandler {
     if (category) {
       try {
         const result = await searchListings({
-          categories: [category],
-          status: 'active',
-          sort: 'newest',
-          limit: 5,
-          page: 1,
+          categories: [category], status: 'active', sort: 'newest', limit: 5, page: 1,
         })
         listings = result.listings.map(l => ({
-          id: l.id,
-          title: l.title,
-          price: l.price,
-          location: l.city ?? undefined,
-          category: l.category?.name,
-          condition: l.condition ?? undefined,
-          seller: l.profile?.full_name ?? undefined,
-          thumbnail: l.images?.[0]?.url,
-          url: `/listing/${l.id}`,
+          id: l.id, title: l.title, price: l.price, location: l.city ?? undefined,
+          category: l.category?.name, condition: l.condition ?? undefined,
+          seller: l.profile?.full_name ?? undefined, thumbnail: l.images?.[0]?.url, url: `/listing/${l.id}`,
         }))
-      } catch {
-        // Ignore errors, fall back to static content
-      }
+      } catch { /* fall back to static */ }
     }
 
-    const topic = getSupportTopic('pricing help')
-    const sections = topic?.sections ?? [
+    const sections: StructuredResponse['sections'] = [
       { type: 'heading', content: 'Pricing Guide', level: 2 },
-      { type: 'text', content: 'Good pricing is key to selling quickly. Here are some benchmarks:' },
-      { type: 'info_section', title: 'Price Ranges by Condition', items: [
-        'New (unused): 80–100% of original price',
-        'Like New (< 1 month): 70–85%',
-        'Good (3–12 months): 50–70%',
-        'Fair (1+ years): 30–50%',
-        'Poor/Well-used: 15–30%',
-      ]},
+      { type: 'text', content: `${pickAcknowledgement()} ${pickGuidancePhrase()}\n\n• New or unused: 80-100% of the original price\n• Like new or gently used: 60-80%\n• Good condition with some wear: 40-60%\n• Fair condition or well-used: 20-40%\n\nThese are general guidelines. Checking similar listings can give you a more accurate sense of the current market.` },
     ]
 
+    if (category) {
+      sections.splice(1, 0, { type: 'subheading', content: `Current market prices for ${category}` })
+    }
+
     if (listings.length > 0) {
-      sections.unshift({
-        type: 'subheading',
-        content: `Recent ${category} listings for reference:`,
-      })
-      sections.push({
-        type: 'listing_grid',
-        title: 'Sample Listings',
-        listings,
-      })
+      sections.push({ type: 'listing_grid', listings, title: 'Sample Listings for Reference' })
     }
 
     return {
       sections,
-      suggestedActions: topic?.suggestedActions ?? [
+      suggestedActions: [
         { label: 'Browse Similar Items', value: 'similar items' },
         { label: 'Listing Tips', value: 'listing tips' },
       ],

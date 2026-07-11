@@ -1,7 +1,7 @@
 import type { IntentHandler, IntentClassification, ConversationContextState, ChatbotRole } from '../../types'
 import type { StructuredResponse, ListingData } from '../../services/responseTypes'
 import { getListingById, getSimilarListings, getSellerInfo } from '../../services/marketplaceSearch'
-import { getSupportTopic } from '../../services/supportContent'
+import { gracefulError } from '../../services/responseQuality'
 
 export class ListingHandler implements IntentHandler {
   async handle(
@@ -12,27 +12,17 @@ export class ListingHandler implements IntentHandler {
     const { entities } = classification
 
     if (!entities.listingId) {
-      const topic = getSupportTopic('listing details fallback')
-      return topic
-        ? {
-            ...topic,
-            intent: 'LISTING_DETAILS',
-            role,
-          }
-        : {
-            sections: [
-              {
-                type: 'text' as const,
-                content: 'Which listing would you like to know more about? You can share the listing ID or name.',
-              },
-            ],
-            suggestedActions: [
-              { label: 'Search Listings', value: 'search' },
-              { label: 'Browse Categories', value: 'show categories' },
-            ],
-            intent: 'LISTING_DETAILS',
-            role,
-          }
+      return {
+        sections: [
+          { type: 'text', content: 'I would be happy to look up a listing for you. Could you share the listing ID or a bit more detail about which item you are interested in?' },
+        ],
+        suggestedActions: [
+          { label: 'Search Listings', value: 'search' },
+          { label: 'Browse Categories', value: 'show categories' },
+        ],
+        intent: 'LISTING_DETAILS',
+        role,
+      }
     }
 
     try {
@@ -41,13 +31,7 @@ export class ListingHandler implements IntentHandler {
       if (!listing) {
         return {
           sections: [
-            {
-              type: 'empty_state' as const,
-              variant: 'no_results',
-              title: 'Listing not found',
-              description: `No listing found with ID "${entities.listingId}".`,
-              action: { label: 'Search Listings', value: 'search' },
-            },
+            { type: 'text', content: `I could not find a listing with the ID "${entities.listingId}". It may have been removed or the ID may be incorrect. Would you like to search for something specific instead?` },
           ],
           suggestedActions: [
             { label: 'Search Listings', value: 'search' },
@@ -70,13 +54,12 @@ export class ListingHandler implements IntentHandler {
         url: `/listing/${listing.id}`,
       }
 
-      // Get similar listings and seller info
       const [similarListingsRaw, seller] = await Promise.all([
-        getSimilarListings(listing.id, 4),
-        getSellerInfo(listing.user_id),
+        getSimilarListings(listing.id, 4).catch(() => []),
+        getSellerInfo(listing.user_id).catch(() => null),
       ])
 
-      const similarListings: ListingData[] = similarListingsRaw.map(l => ({
+      const similarListings: ListingData[] = (similarListingsRaw ?? []).map(l => ({
         id: l.id,
         title: l.title,
         price: l.price,
@@ -93,12 +76,9 @@ export class ListingHandler implements IntentHandler {
 
       return {
         sections: [
+          { type: 'listing_card', listing: listingData },
           {
-            type: 'listing_card' as const,
-            listing: listingData,
-          },
-          {
-            type: 'info_section' as const,
+            type: 'info_section',
             title: 'Seller Information',
             items: [
               `Name: ${sellerName}`,
@@ -107,9 +87,7 @@ export class ListingHandler implements IntentHandler {
             ],
           },
           ...(similarListings.length > 0 ? [{
-            type: 'listing_grid' as const,
-            listings: similarListings,
-            title: 'Similar Listings',
+            type: 'listing_grid' as const, listings: similarListings, title: 'Similar Listings',
           }] : []),
         ],
         suggestedActions: [
@@ -121,40 +99,18 @@ export class ListingHandler implements IntentHandler {
         role,
       }
     } catch (error) {
-      console.error('[ListingHandler] Failed to fetch listing:', error)
-      return this.getStaticResponse(entities.listingId, role)
+      console.error('[ListingHandler] Failed:', error)
+      return {
+        sections: [
+          { type: 'text', content: gracefulError() },
+        ],
+        suggestedActions: [
+          { label: 'Search Listings', value: 'search' },
+          { label: 'Browse Categories', value: 'show categories' },
+        ],
+        intent: 'LISTING_DETAILS',
+        role,
+      }
     }
-  }
-
-  private getStaticResponse(listingId: string | undefined, role: ChatbotRole): StructuredResponse {
-    const topic = getSupportTopic('listing details fallback')
-    return topic
-      ? {
-          ...topic,
-          intent: 'LISTING_DETAILS',
-          role,
-        }
-      : {
-          sections: [
-            {
-              type: 'heading' as const,
-              content: listingId ? `Listing ${listingId}` : 'Listing Details',
-              level: 2,
-            },
-            {
-              type: 'text' as const,
-              content: listingId
-                ? `I can help you with listing ${listingId}. You can view the full details, contact the seller, or ask about pricing and condition.`
-                : 'Which listing would you like to know more about? You can share the listing ID or tell me more about which specific item you mean.',
-            },
-          ],
-          suggestedActions: [
-            { label: 'Contact Seller', value: 'contact seller' },
-            { label: 'Similar Items', value: 'similar items' },
-            { label: 'Safety Tips', value: 'safety tips' },
-          ],
-          intent: 'LISTING_DETAILS',
-          role,
-        }
   }
 }

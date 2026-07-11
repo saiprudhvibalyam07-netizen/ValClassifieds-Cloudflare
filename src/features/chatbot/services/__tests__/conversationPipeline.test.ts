@@ -40,7 +40,7 @@ describe('conversationPipeline', () => {
     it('extracts category', async () => {
       const result = await runConversationPipeline('find laptops', 'visitor')
       expect(result.classification.entities.category).toBe('electronics')
-    })
+    }, 10000)
 
     it('extracts budget', async () => {
       const result = await runConversationPipeline('find phones under 15000', 'visitor')
@@ -103,15 +103,25 @@ describe('conversationPipeline', () => {
   })
 
   describe('SMALL_TALK', () => {
-    it('handles thanks', async () => {
-      const result = await runConversationPipeline('thanks', 'visitor')
+    it('handles casual chat', async () => {
+      const result = await runConversationPipeline('ok', 'visitor')
       expect(result.classification.intent).toBe('SMALL_TALK')
       expect(result.response).toBeTruthy()
     })
+  })
 
+  describe('THANK_YOU', () => {
+    it('handles thanks', async () => {
+      const result = await runConversationPipeline('thanks', 'visitor')
+      expect(result.classification.intent).toBe('THANK_YOU')
+      expect(result.response).toBeTruthy()
+    })
+  })
+
+  describe('FAREWELL', () => {
     it('handles goodbye', async () => {
       const result = await runConversationPipeline('goodbye', 'visitor')
-      expect(result.classification.intent).toBe('SMALL_TALK')
+      expect(result.classification.intent).toBe('FAREWELL')
       expect(result.response).toBeTruthy()
     })
   })

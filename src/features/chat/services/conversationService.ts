@@ -41,6 +41,18 @@ export const conversationService = {
     return data as unknown as ChatConversation | null
   },
 
+  async findExisting(listingId: string, buyerId: string): Promise<ChatConversation | null> {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select(CONVERSATION_SELECT)
+      .eq('listing_id', listingId)
+      .eq('buyer_id', buyerId)
+      .maybeSingle()
+
+    if (error) throw new Error(error.message)
+    return data as unknown as ChatConversation | null
+  },
+
   async findOrCreate(listingId: string, buyerId: string, sellerId: string): Promise<ChatConversation> {
     const { data: existing } = await supabase
       .from('conversations')

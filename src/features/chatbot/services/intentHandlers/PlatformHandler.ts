@@ -1,6 +1,6 @@
 import type { IntentHandler, IntentClassification, ConversationContextState, ChatbotRole } from '../../types'
 import type { StructuredResponse } from '../../services/responseTypes'
-import { getSupportTopic } from '../../services/supportContent'
+import { pickAcknowledgement, pickNextActionIntro } from '../../services/responseQuality'
 
 export class PlatformHandler implements IntentHandler {
   async handle(
@@ -9,38 +9,37 @@ export class PlatformHandler implements IntentHandler {
     role: ChatbotRole
   ): Promise<StructuredResponse> {
     const text = (classification.entities.query ?? '').toLowerCase()
-    let query = 'help'
 
     if (text.includes('fee') || text.includes('cost') || text.includes('charge') || text.includes('price')) {
-      query = 'platform fees'
+      return {
+        sections: [
+          { type: 'heading', content: 'Platform Fees', level: 2 },
+          { type: 'text', content: `${pickAcknowledgement()} Listing items on ValClassifieds is free. When a sale is completed through the platform, a small service fee applies. Here is a summary:\n\n• Creating a listing — Free\n• Browsing and searching — Free\n• Messaging sellers — Free\n• Completed sale fee — A small percentage of the sale price\n\nFor detailed and up-to-date fee information, please refer to our help centre.` },
+        ],
+        suggestedActions: [
+          { label: 'Contact Support', value: 'contact support' },
+          { label: 'How to List', value: 'how to list' },
+          { label: 'Post a Listing', value: 'post listing' },
+        ],
+        intent: 'PLATFORM_HELP',
+        role,
+      }
     }
 
-    const topic = getSupportTopic(query)
-    return topic
-      ? {
-          ...topic,
-          intent: 'PLATFORM_HELP',
-          role,
-        }
-      : {
-          sections: [
-            { type: 'heading', content: 'ValClassifieds Platform Help', level: 2 },
-            { type: 'text', content: 'ValClassifieds is a local marketplace for buying and selling. Here are common topics:' },
-            { type: 'info_section', title: 'Popular Help Topics', items: [
-              'Posting a listing — free and easy',
-              'Buying safely — meet in public, inspect first',
-              'Fees — free to list, 2% on completed sales',
-              'Messaging — built-in chat with sellers',
-              'Favorites — save listings for later',
-            ]},
-          ],
-          suggestedActions: [
-            { label: 'Fees & Pricing', value: 'platform fees' },
-            { label: 'Contact Support', value: 'contact support' },
-            { label: 'How to List', value: 'how to list' },
-          ],
-          intent: 'PLATFORM_HELP',
-          role,
-        }
+    return {
+      sections: [
+        { type: 'heading', content: 'ValClassifieds Help', level: 2 },
+        { type: 'text', content: `${pickAcknowledgement()} ValClassifieds is a local marketplace where people buy and sell items in their community. Here are some common topics:\n\n• Posting a listing is free and straightforward\n• Buying safely — meet in public, inspect items before paying\n• Messaging — use the built-in chat to communicate with sellers\n• Favourites — save listings to revisit later\n• Fees — listing is free; a small fee applies on completed sales` },
+        { type: 'text', content: pickNextActionIntro() },
+      ],
+      suggestedActions: [
+        { label: 'Fees & Pricing', value: 'platform fees' },
+        { label: 'Contact Support', value: 'contact support' },
+        { label: 'How to List', value: 'how to list' },
+        { label: 'Post a Listing', value: 'post listing' },
+      ],
+      intent: 'PLATFORM_HELP',
+      role,
+    }
   }
 }

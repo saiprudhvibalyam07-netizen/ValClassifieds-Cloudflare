@@ -73,7 +73,7 @@ describe('responseStrategy', () => {
   describe('CLARIFY', () => {
     it('returns CLARIFY when clarification needed', () => {
       const result = resolveStrategy({
-        classification: makeClassification({ intent: 'SEARCH_LISTINGS' }),
+        classification: makeClassification({ intent: 'SEARCH_LISTINGS', confidence: 0.9 }),
         clarification: makeClarification({ shouldClarify: true, question: 'What is your budget?' }),
         context: makeContext(),
       })
@@ -95,7 +95,7 @@ describe('responseStrategy', () => {
   describe('ANSWER', () => {
     it('returns ANSWER for greeting', () => {
       const result = resolveStrategy({
-        classification: makeClassification({ intent: 'GREETING' }),
+        classification: makeClassification({ intent: 'GREETING', confidence: 0.95 }),
         clarification: makeClarification(),
         context: makeContext(),
       })
@@ -104,7 +104,7 @@ describe('responseStrategy', () => {
 
     it('returns ANSWER for small talk', () => {
       const result = resolveStrategy({
-        classification: makeClassification({ intent: 'SMALL_TALK' }),
+        classification: makeClassification({ intent: 'SMALL_TALK', confidence: 0.7 }),
         clarification: makeClarification(),
         context: makeContext(),
       })
@@ -115,6 +115,7 @@ describe('responseStrategy', () => {
       const result = resolveStrategy({
         classification: makeClassification({
           intent: 'SEARCH_LISTINGS',
+          confidence: 0.9,
           missingInformation: ['budget'],
         }),
         clarification: makeClarification(),
@@ -125,7 +126,7 @@ describe('responseStrategy', () => {
 
     it('returns ANSWER for buying help', () => {
       const result = resolveStrategy({
-        classification: makeClassification({ intent: 'BUYING_HELP' }),
+        classification: makeClassification({ intent: 'BUYING_HELP', confidence: 0.85 }),
         clarification: makeClarification(),
         context: makeContext(),
       })
@@ -134,7 +135,7 @@ describe('responseStrategy', () => {
 
     it('returns ANSWER for selling help', () => {
       const result = resolveStrategy({
-        classification: makeClassification({ intent: 'SELLING_HELP' }),
+        classification: makeClassification({ intent: 'SELLING_HELP', confidence: 0.85 }),
         clarification: makeClarification(),
         context: makeContext(),
       })
@@ -143,7 +144,7 @@ describe('responseStrategy', () => {
 
     it('returns ANSWER for safety', () => {
       const result = resolveStrategy({
-        classification: makeClassification({ intent: 'SAFETY' }),
+        classification: makeClassification({ intent: 'SAFETY', confidence: 0.9 }),
         clarification: makeClarification(),
         context: makeContext(),
       })
@@ -152,7 +153,7 @@ describe('responseStrategy', () => {
 
     it('returns ANSWER for pricing help', () => {
       const result = resolveStrategy({
-        classification: makeClassification({ intent: 'PRICING_HELP' }),
+        classification: makeClassification({ intent: 'PRICING_HELP', confidence: 0.85 }),
         clarification: makeClarification(),
         context: makeContext(),
       })
@@ -163,11 +164,31 @@ describe('responseStrategy', () => {
   describe('SEARCH', () => {
     it('returns SEARCH for search listings', () => {
       const result = resolveStrategy({
-        classification: makeClassification({ intent: 'SEARCH_LISTINGS' }),
+        classification: makeClassification({ intent: 'SEARCH_LISTINGS', confidence: 0.9 }),
         clarification: makeClarification(),
         context: makeContext(),
       })
       expect(result).toBe('SEARCH')
+    })
+  })
+
+  describe('VERIFY', () => {
+    it('returns VERIFY for low confidence intents', () => {
+      const result = resolveStrategy({
+        classification: makeClassification({ intent: 'SELLING_HELP', confidence: 0.5 }),
+        clarification: makeClarification(),
+        context: makeContext(),
+      })
+      expect(result).toBe('VERIFY')
+    })
+
+    it('does not return VERIFY for UNKNOWN intent', () => {
+      const result = resolveStrategy({
+        classification: makeClassification({ intent: 'UNKNOWN', confidence: 0.5 }),
+        clarification: makeClarification(),
+        context: makeContext(),
+      })
+      expect(result).not.toBe('VERIFY')
     })
   })
 })

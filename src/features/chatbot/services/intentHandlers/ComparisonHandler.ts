@@ -1,7 +1,7 @@
 import type { IntentHandler, IntentClassification, ConversationContextState, ChatbotRole } from '../../types'
 import type { StructuredResponse, ListingData } from '../../services/responseTypes'
 import { searchListings } from '../../services/marketplaceSearch'
-import { getSupportTopic } from '../../services/supportContent'
+import { pickAcknowledgement, pickGuidancePhrase } from '../../services/responseQuality'
 
 export class ComparisonHandler implements IntentHandler {
   async handle(
@@ -15,65 +15,41 @@ export class ComparisonHandler implements IntentHandler {
     if (category) {
       try {
         const result = await searchListings({
-          categories: [category],
-          status: 'active',
-          sort: 'newest',
-          limit: 4,
-          page: 1,
+          categories: [category], status: 'active', sort: 'newest', limit: 4, page: 1,
         })
         listings = result.listings.map(l => ({
-          id: l.id,
-          title: l.title,
-          price: l.price,
-          location: l.city ?? undefined,
-          category: l.category?.name,
-          condition: l.condition ?? undefined,
-          seller: l.profile?.full_name ?? undefined,
-          thumbnail: l.images?.[0]?.url,
-          url: `/listing/${l.id}`,
+          id: l.id, title: l.title, price: l.price, location: l.city ?? undefined,
+          category: l.category?.name, condition: l.condition ?? undefined,
+          seller: l.profile?.full_name ?? undefined, thumbnail: l.images?.[0]?.url, url: `/listing/${l.id}`,
         }))
-      } catch {
-        // Ignore errors, fall back to static content
-      }
+      } catch { /* fall back */ }
     }
 
-    const topic = getSupportTopic('comparison fallback')
-    const sections = topic?.sections ?? [
+    const sections: StructuredResponse['sections'] = [
       { type: 'heading', content: 'Comparing Listings', level: 2 },
-      { type: 'text', content: 'Comparing similar items helps you find the best value. Here\'s what to look for:' },
-      { type: 'info_section', title: 'Comparison Checklist', items: [
-        'Price — is it competitive for the condition?',
-        'Condition — new, like new, good, fair, poor',
-        'Location — closer means easier inspection',
-        'Seller reputation — check ratings and response time',
-        'Photos — clear, multiple angles, honest about defects',
-      ]},
+      { type: 'text', content: `${pickAcknowledgement()} ${pickGuidancePhrase()}\n\n• Price relative to the item's condition and age\n• Location and whether pickup or delivery is available\n• Seller reputation and responsiveness\n• Photo quality and honesty of the description\n\nComparing these factors can help you find the best value.` },
     ]
 
     if (listings.length >= 2) {
-      sections.push({
-        type: 'subheading',
-        content: `Comparing ${category} listings:`,
-      })
-      // Build comparison table
       const headers = ['Item', 'Price', 'Condition', 'Location']
-      const rows = listings.map(l => [
-        l.title,
-        `₹${(l.price ?? 0).toLocaleString()}`,
-        l.condition ?? 'Not specified',
-        l.location ?? 'Not specified',
-      ])
       sections.push({
         type: 'comparison_table',
         headers,
-        rows: rows.map(r => ({ label: r[0], values: r.slice(1) })),
-        title: `${category} Comparison`,
+        rows: listings.map(l => ({
+          label: l.title,
+          values: [
+            `₹${(l.price ?? 0).toLocaleString()}`,
+            l.condition ?? 'Not specified',
+            l.location ?? 'Not specified',
+          ],
+        })),
+        title: category ? `${category} Comparison` : 'Listings Comparison',
       })
     }
 
     return {
       sections,
-      suggestedActions: topic?.suggestedActions ?? [
+      suggestedActions: [
         { label: 'Refine Search', value: 'refine search' },
         { label: 'Buying Tips', value: 'buying tips' },
       ],

@@ -17,6 +17,9 @@ export function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const justConfirmed = searchParams.get('confirmed') === 'true'
+  const redirectTo = searchParams.get('redirect')
+  const listingId = searchParams.get('listingId')
+  const sellerId = searchParams.get('sellerId')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -36,7 +39,11 @@ export function Login() {
       setError(userFriendlyError(err.message))
       setLoading(false)
     } else {
-      navigate('/')
+      if (listingId && sellerId) {
+        navigate(`/messages?new=true&listing=${listingId}&seller=${sellerId}`)
+      } else {
+        navigate(redirectTo || '/')
+      }
     }
   }
 

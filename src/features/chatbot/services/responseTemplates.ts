@@ -58,37 +58,46 @@ export const INTENT_ACTIONS: Partial<Record<Intent, SuggestedAction[]>> = {
   ],
   BUYING_HELP: [
     { label: 'Search Listings', value: 'search' },
-    { label: 'Buying Tips', value: 'buying tips' },
+    { label: 'Compare Items', value: 'compare' },
+    { label: 'Contact Seller', value: 'contact seller' },
     { label: 'Safety Guide', value: 'safety tips' },
   ],
   SELLING_HELP: [
-    { label: 'Create Listing', value: 'how to list' },
+    { label: 'Post a Listing', value: 'post listing' },
     { label: 'Pricing Guide', value: 'pricing help' },
     { label: 'Photo Tips', value: 'photo tips' },
+    { label: 'View My Listings', value: 'my listings' },
   ],
   LISTING_ADVICE: [
-    { label: 'Improve Listing', value: 'listing tips' },
+    { label: 'Photo Tips', value: 'photo tips' },
     { label: 'Pricing Help', value: 'pricing help' },
+    { label: 'Post a Listing', value: 'post listing' },
   ],
   PRICING_HELP: [
     { label: 'Browse Similar', value: 'similar items' },
     { label: 'Listing Tips', value: 'listing tips' },
   ],
   SAFETY: [
-    { label: 'Report Issue', value: 'report scam' },
-    { label: 'Safety Guide', value: 'safety guide' },
+    { label: 'Safety Guide', value: 'safety tips' },
+    { label: 'Scam Awareness', value: 'scam warning' },
+    { label: 'Report User', value: 'report' },
+    { label: 'Contact Support', value: 'contact support' },
   ],
   CONTACT_SELLER: [
+    { label: 'Open Messages', value: 'open messages' },
     { label: 'Safety Tips', value: 'safety tips' },
     { label: 'Report Seller', value: 'report seller' },
   ],
   PLATFORM_HELP: [
     { label: 'Contact Support', value: 'contact support' },
     { label: 'FAQ', value: 'frequently asked questions' },
+    { label: 'Post a Listing', value: 'post listing' },
   ],
   ACCOUNT_HELP: [
-    { label: 'Contact Support', value: 'contact support' },
+    { label: 'My Profile', value: 'profile' },
+    { label: 'My Listings', value: 'my listings' },
     { label: 'Account Settings', value: 'account settings' },
+    { label: 'Contact Support', value: 'contact support' },
   ],
   COMPARISON: [
     { label: 'Refine Search', value: 'refine search' },
@@ -99,6 +108,22 @@ export const INTENT_ACTIONS: Partial<Record<Intent, SuggestedAction[]>> = {
     { label: 'Search More', value: 'search' },
   ],
   SMALL_TALK: [],
+  FAREWELL: [
+    { label: 'Start New Chat', value: 'hello' },
+    { label: 'Browse Listings', value: 'search' },
+  ],
+  THANK_YOU: [
+    { label: 'Search Listings', value: 'search' },
+    { label: 'Browse Categories', value: 'show categories' },
+  ],
+  LISTING_MANAGEMENT: [
+    { label: 'Post a Listing', value: 'how to list' },
+    { label: 'View My Listings', value: 'my listings' },
+  ],
+  OFF_TOPIC: [
+    { label: 'Search Listings', value: 'search' },
+    { label: 'Browse Categories', value: 'show categories' },
+  ],
   ADMIN_ACTION: ADMIN_ACTIONS,
   OFFENSIVE: [],
   UNSUPPORTED: [
@@ -304,6 +329,13 @@ export function getSectionsForIntent(
       break
 
     case 'SMALL_TALK':
+    case 'FAREWELL':
+    case 'THANK_YOU':
+    case 'LISTING_MANAGEMENT':
+      sections.push({ type: 'text', content: rawContent })
+      break
+
+    case 'OFF_TOPIC':
       sections.push({ type: 'text', content: rawContent })
       break
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Heart, MapPin, Calendar, Eye, User, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Heart, MapPin, Calendar, Eye, User, MessageSquare, MessageCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useFavorites } from '../hooks/useFavorites'
@@ -9,6 +9,7 @@ import { ListingMap } from '../components/ListingMap'
 import { SEO, BreadcrumbListJsonLd, SITE_URL } from '../components/SEO'
 import { OptimizedImage } from '../components/OptimizedImage'
 import { ProtectedChat } from '../components/ProtectedChat'
+import { conversationService } from '../features/chat/services/conversationService'
 import type { Listing } from '../types'
 import { format } from 'date-fns'
 
@@ -18,6 +19,8 @@ export function ListingDetail() {
   const { favoriteIds, toggle } = useFavorites()
   const [listing, setListing] = useState<Listing | null>(null)
   const [loading, setLoading] = useState(true)
+  const [existingConvId, setExistingConvId] = useState<string | null>(null)
+  const [convCheckDone, setConvCheckDone] = useState(false)
   const mountedRef = useRef(true)
 
   useEffect(() => {
@@ -50,6 +53,27 @@ export function ListingDetail() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (!user || !listing || user.id === listing.user_id) {
+      setExistingConvId(null)
+      setConvCheckDone(true)
+      return
+    }
+    conversationService.findExisting(listing.id, user.id)
+      .then(conv => {
+        if (mountedRef.current) {
+          setExistingConvId(conv?.id ?? null)
+          setConvCheckDone(true)
+        }
+      })
+      .catch(() => {
+        if (mountedRef.current) {
+          setExistingConvId(null)
+          setConvCheckDone(true)
+        }
+      })
+  }, [user, listing?.id, listing?.user_id])
 
   if (loading) {
     return (
@@ -220,17 +244,26 @@ export function ListingDetail() {
           </ProtectedChat>
           )}
 
-          {user && listing.profile && user.id !== listing.user_id && (
-            <ProtectedChat fallbackMessage="Please log in or create an account to chat with this seller.">
+          {listing.profile && user?.id !== listing.user_id && (
+            convCheckDone && user && existingConvId ? (
               <Link
-                to={`/messages?new=true&listing=${listing.id}&seller=${listing.user_id}`}
-                className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700"
+                to={`/messages?conversation=${existingConvId}`}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700"
+                data-testid="listing-continue-chat"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Continue Chat
+              </Link>
+            ) : (
+              <Link
+                to={user ? `/messages?new=true&listing=${listing.id}&seller=${listing.user_id}` : `/login?redirect=/listings/${listing.id}&listingId=${listing.id}&sellerId=${listing.user_id}`}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700"
                 data-testid="listing-contact-seller"
               >
                 <MessageSquare className="h-4 w-4" />
                 Chat with Seller
               </Link>
-            </ProtectedChat>
+            )
           )}
 
           {user && listing.profile && user.id === listing.user_id && (
