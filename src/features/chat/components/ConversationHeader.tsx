@@ -31,7 +31,7 @@ export function ConversationHeader({ conversation, currentUserId, onBack, onDele
       : null
 
   return (
-    <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3" data-testid="conversation-header">
+    <div className="flex flex-shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 py-3" data-testid="conversation-header">
       {onBack && (
         <button
           onClick={onBack}

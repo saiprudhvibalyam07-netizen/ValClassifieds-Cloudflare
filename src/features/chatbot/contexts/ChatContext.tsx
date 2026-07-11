@@ -3,6 +3,7 @@ import type { ChatState, ChatAction, ChatbotConversation, ChatbotMessage, Chatbo
 import { conversationManager } from '../services/conversationManager'
 import { getConversationProvider } from '../services/provider'
 import { useChatAuth } from '../hooks/useChatAuth'
+import { randomUUID } from '../../../lib/uuid'
 
 interface ChatContextValue extends ChatState {
   toggleChat: () => void
@@ -175,7 +176,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_ERROR', payload: null })
     abortRef.current = false
 
-    const userTempId = crypto.randomUUID()
+    const userTempId = randomUUID()
     const userMessage: ChatbotMessage = {
       id: userTempId,
       conversationId: state.conversation.id,
@@ -199,7 +200,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     dispatch({ type: 'SET_TYPING', payload: true })
 
-    const assistantTempId = crypto.randomUUID()
+    const assistantTempId = randomUUID()
     let streamStarted = false
 
     try {

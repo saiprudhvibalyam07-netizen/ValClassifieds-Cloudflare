@@ -2,11 +2,12 @@ import { supabase } from '../../../lib/supabase'
 import type { ChatbotConversation, ChatbotMessage, ChatbotRole } from '../types'
 import { SESSION_STORAGE_KEY } from '../constants'
 import { clearAllMemories } from './memoryStore'
+import { randomUUID } from '../../../lib/uuid'
 
 function getSessionId(): string {
-  let sessionId = localStorage.getItem(SESSION_STORAGE_KEY)
+  let sessionId = localStorage.getItem(SESSION_STORAGE_KEY) ?? ''
   if (!sessionId) {
-    sessionId = crypto.randomUUID()
+    sessionId = randomUUID()
     localStorage.setItem(SESSION_STORAGE_KEY, sessionId)
   }
   return sessionId

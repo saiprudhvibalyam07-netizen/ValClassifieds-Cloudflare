@@ -147,11 +147,10 @@ export function MessagesPage() {
   return (
     <>
       <SEO title="Messages" description="View your conversations and messages on ValClassifieds." url="/messages" />
-    <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-6xl flex-col">
-      <div className="flex flex-1 overflow-hidden">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 min-h-0 overflow-hidden">
         {(!isMobile || showList) && (
-          <div className={`flex flex-col border-r border-gray-200 bg-white ${
-            isMobile ? 'w-full' : 'w-[360px] xl:w-[400px]'
+          <div className={`flex flex-col bg-white min-h-0 border-r border-gray-200 ${
+            isMobile ? 'w-full' : 'w-[360px] xl:w-[400px] flex-shrink-0'
           }`}>
             <div className="border-b border-gray-200 px-4 py-3">
               <h1 className="text-lg font-semibold text-gray-900">Messages</h1>
@@ -186,7 +185,7 @@ export function MessagesPage() {
         )}
 
         {(!isMobile || !showList) && (
-          <div className="flex flex-1 flex-col bg-gray-50">
+          <div className="flex flex-1 flex-col bg-gray-50 min-h-0 min-w-0">
             {activeConv ? (
               <ConversationDetail
                 conversation={activeConv}
@@ -219,7 +218,6 @@ export function MessagesPage() {
           </div>
         )}
       </div>
-    </div>
     </>
   )
 }

@@ -36,7 +36,7 @@ export function ConversationList({ conversations, activeConvId, unreadIds, curre
   }
 
   return (
-    <div className="flex-1 overflow-y-auto" data-testid="chat-conversation-list">
+    <div className="flex-1 overflow-y-auto min-h-0" data-testid="chat-conversation-list">
       {conversations.map((conv) => {
         const isActive = conv.id === activeConvId
         const isUnread = unreadIds.has(conv.id)

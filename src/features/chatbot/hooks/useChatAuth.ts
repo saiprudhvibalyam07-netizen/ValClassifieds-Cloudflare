@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import type { ChatbotRole } from '../types'
 import { SESSION_STORAGE_KEY } from '../constants'
+import { randomUUID } from '../../../lib/uuid'
 
 export function useChatAuth() {
   const { user, profile } = useAuth()
@@ -13,7 +14,7 @@ export function useChatAuth() {
     } else {
       let stored = localStorage.getItem(SESSION_STORAGE_KEY)
       if (!stored) {
-        stored = crypto.randomUUID()
+        stored = randomUUID()
         localStorage.setItem(SESSION_STORAGE_KEY, stored)
       }
       setSessionId(stored)
